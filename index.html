@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>VerPlay — Vídeos</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- =========================
+       BARRA SUPERIOR
+  ========================== -->
+  <header class="topbar">
+
+    <a class="logo" href="#">
+      Ver<span>Play</span>
+    </a>
+
+    <div class="search">
+      <input
+        id="search"
+        type="text"
+        placeholder="Buscar vídeos..."
+        autocomplete="off"
+      >
+
+      <button type="button">
+        🔍
+      </button>
+    </div>
+
+    <button
+      class="upload"
+      type="button"
+      onclick="document.getElementById('videoFile').click()"
+    >
+      + Subir
+    </button>
+
+    <input
+      id="videoFile"
+      type="file"
+      accept="video/*"
+      hidden
+    >
+
+  </header>
+
+
+  <!-- =========================
+       CATEGORÍAS
+  ========================== -->
+  <nav class="categories">
+
+    <button
+      class="active"
+      data-cat="Todos"
+      type="button"
+    >
+      Todos
+    </button>
+
+    <button
+      data-cat="Gaming"
+      type="button"
+    >
+      Gaming
+    </button>
+
+    <button
+      data-cat="Música"
+      type="button"
+    >
+      Música
+    </button>
+
+    <button
+      data-cat="Animación"
+      type="button"
+    >
+      Animación
+    </button>
+
+    <button
+      data-cat="Tecnología"
+      type="button"
+    >
+      Tecnología
+    </button>
+
+    <button
+      data-cat="Otros"
+      type="button"
+    >
+      Otros
+    </button>
+
+  </nav>
+
+
+  <!-- =========================
+       CONTENIDO PRINCIPAL
+  ========================== -->
+  <main>
+
+    <!-- HERO -->
+    <section class="hero">
+
+      <div class="hero-content">
+
+        <p class="eyebrow">
+          VERPLAY
+        </p>
+
+        <h1>
+          Tu sitio para<br>
+          <span>ver vídeos.</span>
+        </h1>
+
+        <p class="lead">
+          Descubre vídeos, creadores y contenido
+          de toda la comunidad VerPlay.
+        </p>
+
+      </div>
+
+
+      <div class="hero-card">
+
+        <div class="play">
+          ▶
+        </div>
+
+        <p>
+          Descubre contenido
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- =========================
+         LISTA DE VÍDEOS
+    ========================== -->
+
+    <section class="section-head">
+
+      <h2>
+        Vídeos
+      </h2>
+
+      <span id="count">
+        0 vídeos
+      </span>
+
+    </section>
+
+
+    <section
+      id="grid"
+      class="grid"
+    >
+      <!--
+        Los vídeos se generan
+        automáticamente mediante script.js
+      -->
+    </section>
+
+  </main>
+
+
+  <!-- =========================
+       REPRODUCTOR
+  ========================== -->
+
+  <div
+    id="modal"
+    class="modal hidden"
+  >
+
+    <div class="modal-box">
+
+      <button
+        class="close"
+        type="button"
+      >
+        ×
+      </button>
+
+
+      <video
+        id="player"
+        controls
+        playsinline
+      ></video>
+
+
+      <h2 id="modalTitle">
+        Vídeo
+      </h2>
+
+
+      <p id="modalDesc">
+        Descripción del vídeo
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       JAVASCRIPT
+  ========================== -->
+
+  <script src="script.js"></script>
+
+</body>
+</html>
