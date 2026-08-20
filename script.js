@@ -243,6 +243,66 @@ async function uploadVideoToSupabase(file, meta) {
     return publicUrl;
 }
 
+async function deleteVideo(video) {
+    if (!video || video.isDemo) {
+        alert("No se puede borrar un vídeo de demostración.");
+        return;
+    }
+    if (!currentUser) {
+        alert("Inicia sesión para borrar tus vídeos.");
+        openAuth("login");
+        return;
+    }
+    if ((video.uploader || "").toLowerCase() !== (currentUser.username || "").toLowerCase()) {
+        alert("Solo el creador puede borrar este vídeo.");
+        return;
+    }
+    if (!confirm('¿Borrar permanentemente "' + video.title + '"?\nEsta acción no se puede deshacer.')) {
+        return;
+    }
+
+    if (!supabaseClient) {
+        alert("Supabase no disponible.");
+        return;
+    }
+
+    try {
+        // Borrar archivo del storage
+        if (video.storagePath) {
+            const { error: stErr } = await supabaseClient.storage
+                .from("videos")
+                .remove([video.storagePath]);
+            if (stErr) console.warn("Storage delete:", stErr.message);
+        }
+
+        // Borrar comentarios (por si no hay CASCADE)
+        try {
+            await supabaseClient.from("comments").delete().eq("video_id", video.id);
+        } catch (e) { console.warn(e); }
+
+        // Borrar fila del vídeo
+        const { error: dbErr } = await supabaseClient
+            .from("videos")
+            .delete()
+            .eq("id", video.id);
+
+        if (dbErr) throw dbErr;
+
+        // Cerrar modal y refrescar lista
+        const modal = document.getElementById("modal");
+        const player = document.getElementById("player");
+        closeModal(modal);
+        if (player) { player.pause(); player.removeAttribute("src"); }
+        currentPlayingVideo = null;
+        await refreshVideos();
+        alert("Vídeo eliminado.");
+    } catch (err) {
+        console.error(err);
+        alert("No se pudo borrar: " + (err.message || err) +
+            "\n\nAsegúrate de haber ejecutado las políticas DELETE en Supabase.");
+    }
+}
+
 async function incrementViews(video) {
     if (!video || video.isDemo || !supabaseClient) return;
     video.views = (video.views || 0) + 1;
@@ -509,6 +569,15 @@ function openVideo(video) {
     updateModalStats(video);
     highlightVoteButtons(video.id);
 
+    const deleteBtn = document.getElementById("deleteVideoBtn");
+    if (deleteBtn) {
+        const isOwner = currentUser && video.uploader &&
+            currentUser.username.toLowerCase() === String(video.uploader).toLowerCase() &&
+            !video.isDemo;
+        if (isOwner) deleteBtn.classList.remove("hidden");
+        else deleteBtn.classList.add("hidden");
+    }
+
     if (currentUser) {
         if (commentForm) commentForm.classList.remove("hidden");
         if (commentHint) commentHint.classList.add("hidden");
@@ -585,6 +654,10 @@ function setupPlayer() {
     const dislikeBtn = document.getElementById("dislikeBtn");
     if (likeBtn) likeBtn.addEventListener("click", () => { if (currentPlayingVideo) applyVote(currentPlayingVideo, "like"); });
     if (dislikeBtn) dislikeBtn.addEventListener("click", () => { if (currentPlayingVideo) applyVote(currentPlayingVideo, "dislike"); });
+    const deleteBtn = document.getElementById("deleteVideoBtn");
+    if (deleteBtn) deleteBtn.addEventListener("click", () => {
+        if (currentPlayingVideo) deleteVideo(currentPlayingVideo);
+    });
 }
 
 /* ---------- categories / search ---------- */
