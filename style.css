@@ -309,3 +309,16 @@ input[type="color"] { width: 60px; height: 40px; border: 0; background: transpar
     .profile-actions { flex-direction: column; }
     .profile-actions .secondary-button { width: 100%; }
 }
+
+
+/* AdSense */
+.ad-wrap {
+    max-width: 1400px;
+    margin: 10px auto 30px;
+    padding: 12px 30px;
+    text-align: center;
+    min-height: 90px;
+}
+@media (max-width: 800px) {
+    .ad-wrap { padding: 10px 15px; }
+}
