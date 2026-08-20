@@ -212,13 +212,16 @@ async function fetchRemoteVideos() {
                 if (!url || !url.includes("/storage/v1/object/")) url = built;
             }
             let thumbnail = row.thumbnail_url || "";
-            // Si la miniatura es solo un path relativo, convertir a URL pública
-            if (thumbnail && !/^https?:\/\//i.test(thumbnail)) {
-                thumbnail = buildPublicThumbUrl(thumbnail.replace(/^\/+/, ""));
-            }
-            // Si apunta a un path de storage sin /object/public/
-            if (thumbnail && thumbnail.includes("supabase.co") && !thumbnail.includes("/storage/v1/object/")) {
-                thumbnail = "";
+            if (thumbnail) {
+                if (!/^https?:\/\//i.test(thumbnail)) {
+                    // path relativo → URL pública en carpeta thumbs
+                    thumbnail = buildPublicThumbUrl(thumbnail.replace(/^\/+/, ""));
+                } else if (thumbnail.includes("/storage/v1/object/public/videos/") && !thumbnail.includes("/thumbs/")) {
+                    // URL antigua fuera de thumbs: intentar no romperla
+                    // dejar como está
+                } else if (thumbnail.includes("supabase.co") && !thumbnail.includes("/storage/v1/object/")) {
+                    thumbnail = "";
+                }
             }
             return {
                 id: row.id,
@@ -247,8 +250,12 @@ async function refreshVideos() {
 
 function buildPublicThumbUrl(storagePath) {
     const base = SUPABASE_URL.replace(/\/$/, "");
-    const clean = String(storagePath || "").replace(/^\/+/, "");
-    return base + "/storage/v1/object/public/videos/" + clean.split("/").map(encodeURIComponent).join("/");
+    let clean = String(storagePath || "").replace(/^\/+/, "");
+    if (clean && !clean.startsWith("thumbs/")) {
+        clean = "thumbs/" + clean.replace(/^thumbs\/?/, "");
+    }
+    const parts = clean.split("/").map(function (p) { return encodeURIComponent(p); });
+    return base + "/storage/v1/object/public/videos/" + parts.join("/");
 }
 
 function fileToDataURL(file) {
@@ -644,16 +651,12 @@ function renderVideos(list) {
         const isFav = favorites.includes(video.id);
         const card = document.createElement("article");
         card.className = "video-card";
-        const icon = video.icon || "🎬";
-        let thumbHtml;
-        if (video.thumbnail) {
-            thumbHtml = `<img class="thumb-img" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.classList.add('hidden');var f=this.nextElementSibling;if(f)f.classList.remove('hidden');">` +
-                `<div class="thumb-fallback hidden">${icon}</div>`;
-        } else {
-            thumbHtml = `<div class="thumb-fallback">${icon}</div>`;
-        }
+        const thumbSrc = video.thumbnail || "";
+        const thumbHtml = thumbSrc
+            ? `<img class="thumb-img" src="${escapeHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.opacity='0'">`
+            : `<div class="thumb-empty"></div>`;
         card.innerHTML = `
-            <div class="thumbnail">${thumbHtml}</div>
+            <div class="thumbnail">${thumbHtml}<div class="thumb-play">▶</div></div>
             <div class="video-info">
                 <h3>${escapeHtml(video.title)}</h3>
                 <p class="card-uploader">@${escapeHtml(video.uploader || "Anónimo")}</p>
@@ -1270,4 +1273,3 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
-
