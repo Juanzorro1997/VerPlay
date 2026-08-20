@@ -1,1768 +1,169 @@
-/* =========================================================
+/* ============================================================
    VERPLAY V2
-   PROTOTIPO FRONTEND
+   Prototipo sin servidor
 
-   IMPORTANTE:
-
-   - No existe backend.
-   - No existe subida real de vídeos.
-   - Las cuentas son simuladas.
-   - Los datos se guardan en localStorage.
-========================================================= */
+   Todo se almacena en localStorage.
+============================================================ */
 
 
-/* =========================================================
-   CONFIGURACIÓN
-========================================================= */
-
-const STORAGE_USERS = "verplay_users";
-const STORAGE_CURRENT_USER = "verplay_current_user";
-const STORAGE_APPEARANCE = "verplay_appearance";
-
-
-/* =========================================================
+/* ============================================================
    VÍDEOS DE DEMOSTRACIÓN
-========================================================= */
+============================================================ */
 
 const videos = [
-
     {
-        id: "video-001",
-
-        title: "Gameplay de prueba",
-
-        description:
-            "Un gameplay de demostración para probar el reproductor de VerPlay.",
-
+        id: 1,
+        title: "Gameplay de ejemplo",
+        description: "Un vídeo de demostración de VerPlay.",
         category: "Gaming",
-
-        author:
-            "VerPlay",
-
-        duration:
-            "12:45",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        icon: "🎮"
     },
 
-
     {
-        id: "video-002",
-
-        title: "Mundo de videojuegos",
-
-        description:
-            "Explorando el mundo de los videojuegos y sus posibilidades.",
-
-        category: "Gaming",
-
-        author:
-            "VerPlay",
-
-        duration:
-            "08:21",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-    },
-
-
-    {
-        id: "video-003",
-
-        title: "Música y relajación",
-
-        description:
-            "Una pequeña experiencia musical para relajarse.",
-
+        id: 2,
+        title: "Música relajante",
+        description: "Música para relajarse.",
         category: "Música",
-
-        author:
-            "MusicWorld",
-
-        duration:
-            "05:32",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        icon: "🎵"
     },
 
-
     {
-        id: "video-004",
-
-        title: "Animación 3D",
-
-        description:
-            "Una demostración de animación y diseño 3D.",
-
+        id: 3,
+        title: "Animación de ejemplo",
+        description: "Una pequeña animación.",
         category: "Animación",
-
-        author:
-            "3DArtist",
-
-        duration:
-            "03:21",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        icon: "🎨"
     },
 
-
     {
-        id: "video-005",
-
-        title: "Tecnología del futuro",
-
-        description:
-            "Una mirada a las nuevas tecnologías.",
-
+        id: 4,
+        title: "Tecnología",
+        description: "Vídeo sobre tecnología.",
         category: "Tecnología",
-
-        author:
-            "TechLab",
-
-        duration:
-            "15:02",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        icon: "💻"
     },
 
+    {
+        id: 5,
+        title: "Vídeo de la comunidad",
+        description: "Contenido creado por usuarios.",
+        category: "Otros",
+        icon: "🎬"
+    },
 
     {
-        id: "video-006",
-
-        title: "Construyendo un ordenador",
-
-        description:
-            "Proceso de montaje de un ordenador desde cero.",
-
-        category: "Tecnología",
-
-        author:
-            "TechLab",
-
-        duration:
-            "18:42",
-
-        thumbnail:
-            "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80",
-
-        video:
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+        id: 6,
+        title: "Gaming retro",
+        description: "Un viaje por los videojuegos clásicos.",
+        category: "Gaming",
+        icon: "🕹️"
     }
-
-
 ];
 
 
-/* =========================================================
-   LOGROS
-========================================================= */
+/* ============================================================
+   ELEMENTOS
+============================================================ */
 
-const achievements = [
+const grid = document.getElementById("grid");
+const count = document.getElementById("count");
 
-    {
-        id: "account",
+const search = document.getElementById("search");
+const searchButton = document.getElementById("searchButton");
 
-        icon: "🟣",
+const settingsButton =
+    document.getElementById("settingsButton");
 
-        name:
-            "Primer paso",
+const settingsModal =
+    document.getElementById("settingsModal");
 
-        description:
-            "Crear una cuenta de VerPlay.",
+const closeSettings =
+    document.getElementById("closeSettings");
 
-        condition:
-            user => true
-    },
+const closeSettingsButton =
+    document.getElementById("closeSettingsButton");
 
+const backgroundColor =
+    document.getElementById("backgroundColor");
 
-    {
-        id: "first-video",
+const backgroundImage =
+    document.getElementById("backgroundImage");
 
-        icon: "🎬",
+const resetBackground =
+    document.getElementById("resetBackground");
 
-        name:
-            "Primer vídeo",
+const removeBackgroundImage =
+    document.getElementById("removeBackgroundImage");
 
-        description:
-            "Ver tu primer vídeo.",
 
-        condition:
-            user =>
-                user.stats.videosWatched >= 1
-    },
+/* ============================================================
+   USUARIO
+============================================================ */
 
-
-    {
-        id: "explorer",
-
-        icon: "🔵",
-
-        name:
-            "Explorador",
-
-        description:
-            "Ver 10 vídeos.",
-
-        condition:
-            user =>
-                user.stats.videosWatched >= 10
-    },
-
-
-    {
-        id: "hour",
-
-        icon: "🟡",
-
-        name:
-            "Una hora",
-
-        description:
-            "Estar conectado durante una hora.",
-
-        condition:
-            user =>
-                user.stats.timeOnline >= 3600
-    },
-
-
-    {
-        id: "favorite",
-
-        icon: "❤️",
-
-        name:
-            "Mi primer favorito",
-
-        description:
-            "Guardar un vídeo en favoritos.",
-
-        condition:
-            user =>
-                user.favorites.length >= 1
-    },
-
-
-    {
-        id: "favorites25",
-
-        icon: "💎",
-
-        name:
-            "Coleccionista",
-
-        description:
-            "Guardar 25 vídeos favoritos.",
-
-        condition:
-            user.favorites.length >= 25
-    },
-
-
-    {
-        id: "popular",
-
-        icon: "👑",
-
-        name:
-            "Veterano",
-
-        description:
-            "Conseguir 30 horas conectado.",
-
-        condition:
-            user =>
-                user.stats.timeOnline >= 108000
-    }
-
-];
-
-
-/* =========================================================
-   ESTADO GLOBAL
-========================================================= */
-
-let currentCategory = "Todos";
-
-let currentSearch = "";
-
-let currentVideo = null;
-
-let profileTab = "videos";
-
-let authMode = "login";
-
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const videoGrid =
-    document.getElementById("videoGrid");
-
-const videoCount =
-    document.getElementById("videoCount");
-
-const searchInput =
-    document.getElementById("searchInput");
-
-const toolsPanel =
-    document.getElementById("toolsPanel");
-
-const authModal =
-    document.getElementById("authModal");
-
-const videoModal =
-    document.getElementById("videoModal");
-
-const editProfileModal =
-    document.getElementById("editProfileModal");
-
-
-/* =========================================================
-   LOCAL STORAGE
-========================================================= */
-
-function getUsers() {
-
-    try {
-
-        return JSON.parse(
-            localStorage.getItem(STORAGE_USERS)
-        ) || [];
-
-    } catch {
-
-        return [];
-
-    }
-
-}
-
-
-function saveUsers(users) {
-
-    localStorage.setItem(
-        STORAGE_USERS,
-        JSON.stringify(users)
-    );
-
-}
-
-
-function getCurrentUsername() {
-
-    return localStorage.getItem(
-        STORAGE_CURRENT_USER
-    );
-
-}
-
-
-function getCurrentUser() {
-
-    const username =
-        getCurrentUsername();
-
-    if (!username) {
-        return null;
-    }
-
-
-    const users =
-        getUsers();
-
-
-    return users.find(
-        user =>
-            user.username === username
+let currentUser =
+    JSON.parse(
+        localStorage.getItem("verplay_current_user")
     ) || null;
 
-}
 
+/* ============================================================
+   FUNCIONES LOCALSTORAGE
+============================================================ */
 
-function saveCurrentUser(user) {
-
-    const users =
-        getUsers();
-
-
-    const index =
-        users.findIndex(
-            item =>
-                item.username === user.username
-        );
-
-
-    if (index === -1) {
-
-        users.push(user);
-
-    } else {
-
-        users[index] = user;
-
-    }
-
-
-    saveUsers(users);
-
-}
-
-
-/* =========================================================
-   DEFAULT USER
-========================================================= */
-
-function createUserObject(
-    name,
-    username,
-    email,
-    password
-) {
-
-    return {
-
-        name,
-
-        username,
-
-        email,
-
-        password,
-
-        bio:
-            "¡Hola! Estoy usando VerPlay.",
-
-        interests:
-            [
-                "Gaming",
-                "Tecnología"
-            ],
-
-        avatar:
-            "",
-
-        profileBackground:
-            "",
-
-        profileColor:
-            "#ff3d71",
-
-        favorites:
-            [],
-
-        videos:
-            [],
-
-        unlockedAchievements:
-            [],
-
-        stats: {
-
-            videosWatched:
-                0,
-
-            timeOnline:
-                0,
-
-            createdAt:
-                Date.now(),
-
-            lastSession:
-                Date.now(),
-
-            totalSessions:
-                0
-
-        }
-
-    };
-
-}
-
-
-/* =========================================================
-   SESSION / TIME
-========================================================= */
-
-function updateOnlineTime() {
-
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-        return;
-    }
-
-
-    const now =
-        Date.now();
-
-
-    const difference =
-        Math.floor(
-            (now - user.stats.lastSession)
-            / 1000
-        );
-
-
-    /*
-       Evitamos que una pestaña cerrada durante días
-       cuente como tiempo conectado.
-    */
-
-    const safeDifference =
-        Math.min(
-            difference,
-            60
-        );
-
-
-    user.stats.timeOnline +=
-        safeDifference;
-
-
-    user.stats.lastSession =
-        now;
-
-
-    saveCurrentUser(user);
-
-
-    checkAchievements();
-
-    updateAccountUI();
-
-}
-
-
-setInterval(
-    updateOnlineTime,
-    1000
-);
-
-
-/* =========================================================
-   ACHIEVEMENTS
-========================================================= */
-
-function checkAchievements() {
-
-    const user =
-        getCurrentUser();
-
-    if (!user) {
-        return;
-    }
-
-
-    let changed = false;
-
-
-    achievements.forEach(
-        achievement => {
-
-            const unlocked =
-                achievement.condition(user);
-
-
-            if (
-                unlocked &&
-                !user.unlockedAchievements.includes(
-                    achievement.id
-                )
-            ) {
-
-                user.unlockedAchievements.push(
-                    achievement.id
-                );
-
-                changed = true;
-
-            }
-
-        }
-    );
-
-
-    if (changed) {
-
-        saveCurrentUser(user);
-
-    }
-
-}
-
-
-/* =========================================================
-   ACCOUNT UI
-========================================================= */
-
-function updateAccountUI() {
-
-    const user =
-        getCurrentUser();
-
-
-    const accountName =
-        document.getElementById(
-            "accountName"
-        );
-
-
-    const accountAvatar =
-        document.getElementById(
-            "accountAvatar"
-        );
-
-
-    if (!user) {
-
-        accountName.textContent =
-            "Entrar";
-
-        accountAvatar.innerHTML =
-            "👤";
-
-        return;
-
-    }
-
-
-    accountName.textContent =
-        user.name;
-
-
-    if (user.avatar) {
-
-        accountAvatar.innerHTML =
-            `<img src="${user.avatar}" alt="">`;
-
-    } else {
-
-        accountAvatar.textContent =
-            "👤";
-
-    }
-
-}
-
-
-/* =========================================================
-   AUTH
-========================================================= */
-
-function openAuth(mode = "login") {
-
-    authMode =
-        mode;
-
-    authModal.classList.remove(
-        "hidden"
-    );
-
-    updateAuthModal();
-
-}
-
-
-function closeAuth() {
-
-    authModal.classList.add(
-        "hidden"
-    );
-
-}
-
-
-function updateAuthModal() {
-
-    const title =
-        document.getElementById(
-            "authTitle"
-        );
-
-    const description =
-        document.getElementById(
-            "authDescription"
-        );
-
-    const registerFields =
-        document.getElementById(
-            "registerFields"
-        );
-
-    const submit =
-        document.getElementById(
-            "authSubmit"
-        );
-
-    const switchButton =
-        document.getElementById(
-            "switchAuth"
-        );
-
-
-    clearAuthError();
-
-
-    if (authMode === "login") {
-
-        title.textContent =
-            "Iniciar sesión";
-
-        description.textContent =
-            "Entra en tu cuenta de VerPlay.";
-
-        registerFields.classList.add(
-            "hidden"
-        );
-
-        submit.textContent =
-            "Iniciar sesión";
-
-        switchButton.textContent =
-            "¿No tienes cuenta? Crear una";
-
-    } else {
-
-        title.textContent =
-            "Crear cuenta";
-
-        description.textContent =
-            "Crea tu perfil de VerPlay.";
-
-        registerFields.classList.remove(
-            "hidden"
-        );
-
-        submit.textContent =
-            "Crear cuenta";
-
-        switchButton.textContent =
-            "¿Ya tienes cuenta? Iniciar sesión";
-
-    }
-
-}
-
-
-function clearAuthError() {
-
-    const error =
-        document.getElementById(
-            "authError"
-        );
-
-    error.textContent =
-        "";
-
-    error.classList.add(
-        "hidden"
-    );
-
-}
-
-
-function showAuthError(message) {
-
-    const error =
-        document.getElementById(
-            "authError"
-        );
-
-    error.textContent =
-        message;
-
-    error.classList.remove(
-        "hidden"
-    );
-
-}
-
-
-function handleAuth() {
-
-    const email =
-        document.getElementById(
-            "authEmail"
-        ).value.trim();
-
-
-    const password =
-        document.getElementById(
-            "authPassword"
-        ).value;
-
-
-    if (!email || !password) {
-
-        showAuthError(
-            "Completa todos los campos."
-        );
-
-        return;
-
-    }
-
-
-    const users =
-        getUsers();
-
-
-    if (authMode === "login") {
-
-        const user =
-            users.find(
-                item =>
-                    item.email.toLowerCase() ===
-                    email.toLowerCase() &&
-                    item.password === password
-            );
-
-
-        if (!user) {
-
-            showAuthError(
-                "Email o contraseña incorrectos."
-            );
-
-            return;
-
-        }
-
-
-        localStorage.setItem(
-            STORAGE_CURRENT_USER,
-            user.username
-        );
-
-
-        user.stats.lastSession =
-            Date.now();
-
-
-        user.stats.totalSessions++;
-
-
-        saveCurrentUser(user);
-
-
-        closeAuth();
-
-        updateAccountUI();
-
-        checkAchievements();
-
-        showPage("profile");
-
-        renderProfile();
-
-        return;
-
-    }
-
-
-    const name =
-        document.getElementById(
-            "registerName"
-        ).value.trim();
-
-
-    const username =
-        document.getElementById(
-            "registerUsername"
-        ).value
-            .trim()
-            .toLowerCase();
-
-
-    if (!name || !username) {
-
-        showAuthError(
-            "Introduce tu nombre y usuario."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        !/^[a-zA-Z0-9_]+$/.test(
-            username
-        )
-    ) {
-
-        showAuthError(
-            "El usuario solo puede contener letras, números y _."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        users.some(
-            user =>
-                user.username === username
-        )
-    ) {
-
-        showAuthError(
-            "Ese nombre de usuario ya existe."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        users.some(
-            user =>
-                user.email.toLowerCase() ===
-                email.toLowerCase()
-        )
-    ) {
-
-        showAuthError(
-            "Ese email ya está registrado."
-        );
-
-        return;
-
-    }
-
-
-    const user =
-        createUserObject(
-            name,
-            username,
-            email,
-            password
-        );
-
-
-    user.unlockedAchievements =
-        ["account"];
-
-
-    users.push(user);
-
-
-    saveUsers(users);
-
+function saveUser(user) {
 
     localStorage.setItem(
-        STORAGE_CURRENT_USER,
-        username
+        "verplay_user",
+        JSON.stringify(user)
     );
 
-
-    closeAuth();
-
-    updateAccountUI();
-
-    showPage("profile");
-
-    renderProfile();
-
-
-    showMessage(
-        "🎉",
-        "¡Bienvenido a VerPlay!",
-        "Tu cuenta ha sido creada correctamente."
+    localStorage.setItem(
+        "verplay_current_user",
+        JSON.stringify(user)
     );
-
 }
 
 
-/* =========================================================
-   LOGOUT
-========================================================= */
+function getUser() {
 
-function logout() {
-
-    const user =
-        getCurrentUser();
-
-
-    if (user) {
-
-        user.stats.lastSession =
-            Date.now();
-
-        saveCurrentUser(user);
-
-    }
-
-
-    localStorage.removeItem(
-        STORAGE_CURRENT_USER
-    );
-
-
-    updateAccountUI();
-
-    showPage("home");
-
-    renderVideos();
-
+    return JSON.parse(
+        localStorage.getItem("verplay_user")
+    ) || null;
 }
 
 
-/* =========================================================
-   ACCOUNT BUTTON
-========================================================= */
+/* ============================================================
+   CONFIGURACIÓN DE FONDO
+============================================================ */
 
-function openAccount() {
+function loadBackground() {
 
-    const user =
-        getCurrentUser();
+    const color =
+        localStorage.getItem(
+            "verplay_background_color"
+        );
 
-
-    if (!user) {
-
-        openAuth("login");
-
-        return;
-
-    }
-
-
-    showPage("profile");
-
-    renderProfile();
-
-}
-
-
-/* =========================================================
-   PAGE NAVIGATION
-========================================================= */
-
-function showPage(page) {
-
-    document
-        .querySelectorAll(".page")
-        .forEach(
-            element =>
-                element.classList.add("hidden")
+    const image =
+        localStorage.getItem(
+            "verplay_background_image"
         );
 
 
-    if (page === "profile") {
+    if (color) {
 
-        document
-            .getElementById("page-profile")
-            .classList.remove("hidden");
-
-        renderProfile();
-
-    } else {
-
-        document
-            .getElementById("page-home")
-            .classList.remove("hidden");
-
-    }
-
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-
-}
-
-
-window.showPage =
-    showPage;
-
-
-window.openAccount =
-    openAccount;
-
-
-/* =========================================================
-   SEARCH
-========================================================= */
-
-searchInput.addEventListener(
-    "input",
-    () => {
-
-        currentSearch =
-            searchInput.value
-                .trim()
-                .toLowerCase();
-
-        renderVideos();
-
-    }
-);
-
-
-/* =========================================================
-   CATEGORIES
-========================================================= */
-
-document
-    .querySelectorAll(".category")
-    .forEach(
-        button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    document
-                        .querySelectorAll(".category")
-                        .forEach(
-                            item =>
-                                item.classList.remove(
-                                    "active"
-                                )
-                        );
-
-
-                    button.classList.add(
-                        "active"
-                    );
-
-
-                    currentCategory =
-                        button.dataset.category;
-
-
-                    renderVideos();
-
-                }
-            );
-
-        }
-    );
-
-
-/* =========================================================
-   RENDER VIDEOS
-========================================================= */
-
-function renderVideos() {
-
-    const filtered =
-        videos.filter(
-            video => {
-
-                const categoryMatch =
-                    currentCategory === "Todos" ||
-                    video.category === currentCategory;
-
-
-                const searchMatch =
-                    !currentSearch ||
-                    video.title
-                        .toLowerCase()
-                        .includes(currentSearch) ||
-                    video.description
-                        .toLowerCase()
-                        .includes(currentSearch) ||
-                    video.author
-                        .toLowerCase()
-                        .includes(currentSearch);
-
-
-                return (
-                    categoryMatch &&
-                    searchMatch
-                );
-
-            }
+        document.documentElement.style.setProperty(
+            "--bg",
+            color
         );
 
-
-    videoGrid.innerHTML =
-        "";
-
-
-    videoCount.textContent =
-        `${filtered.length} ${
-            filtered.length === 1
-                ? "vídeo"
-                : "vídeos"
-        }`;
-
-
-    if (!filtered.length) {
-
-        videoGrid.innerHTML = `
-
-            <div class="empty-state">
-
-                <h3>
-                    No encontramos vídeos
-                </h3>
-
-                <p>
-                    Prueba otra búsqueda o categoría.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
-
+        backgroundColor.value = color;
     }
 
 
-    filtered.forEach(
-        video => {
-
-            const card =
-                document.createElement(
-                    "article"
-                );
-
-
-            card.className =
-                "video-card";
-
-
-            card.innerHTML = `
-
-                <div class="thumbnail">
-
-                    <img
-                        src="${video.thumbnail}"
-                        alt="${escapeHTML(video.title)}"
-                    >
-
-                    <span class="duration">
-                        ${video.duration}
-                    </span>
-
-                </div>
-
-
-                <div class="video-info">
-
-                    <h3 class="video-title">
-                        ${escapeHTML(video.title)}
-                    </h3>
-
-                    <div class="video-author">
-                        ${escapeHTML(video.author)}
-                    </div>
-
-                    <span class="video-category">
-                        ${escapeHTML(video.category)}
-                    </span>
-
-                </div>
-
-            `;
-
-
-            card.addEventListener(
-                "click",
-                () =>
-                    openVideo(video)
-            );
-
-
-            videoGrid.appendChild(
-                card
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   VIDEO PLAYER
-========================================================= */
-
-function openVideo(video) {
-
-    currentVideo =
-        video;
-
-
-    const player =
-        document.getElementById(
-            "videoPlayer"
-        );
-
-
-    document.getElementById(
-        "modalVideoTitle"
-    ).textContent =
-        video.title;
-
-
-    document.getElementById(
-        "modalVideoDescription"
-    ).textContent =
-        video.description;
-
-
-    player.src =
-        video.video;
-
-
-    updateFavoriteButton();
-
-
-    videoModal.classList.remove(
-        "hidden"
-    );
-
-
-    const user =
-        getCurrentUser();
-
-
-    if (user) {
-
-        user.stats.videosWatched++;
-
-
-        user.stats.lastSession =
-            Date.now();
-
-
-        saveCurrentUser(user);
-
-        checkAchievements();
-
-    }
-
-
-    player.play().catch(
-        () => {}
-    );
-
-}
-
-
-function closeVideo() {
-
-    const player =
-        document.getElementById(
-            "videoPlayer"
-        );
-
-
-    player.pause();
-
-    player.removeAttribute(
-        "src"
-    );
-
-    player.load();
-
-
-    videoModal.classList.add(
-        "hidden"
-    );
-
-
-    currentVideo =
-        null;
-
-}
-
-
-document
-    .getElementById("closeVideo")
-    .addEventListener(
-        "click",
-        closeVideo
-    );
-
-
-videoModal.addEventListener(
-    "click",
-    event => {
-
-        if (
-            event.target ===
-            videoModal
-        ) {
-
-            closeVideo();
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   FAVORITES
-========================================================= */
-
-function toggleFavorite() {
-
-    const user =
-        getCurrentUser();
-
-
-    if (!user) {
-
-        closeVideo();
-
-        openAuth("login");
-
-        return;
-
-    }
-
-
-    if (!currentVideo) {
-        return;
-    }
-
-
-    const index =
-        user.favorites.indexOf(
-            currentVideo.id
-        );
-
-
-    if (index === -1) {
-
-        user.favorites.push(
-            currentVideo.id
-        );
-
-    } else {
-
-        user.favorites.splice(
-            index,
-            1
-        );
-
-    }
-
-
-    saveCurrentUser(user);
-
-    checkAchievements();
-
-    updateFavoriteButton();
-
-}
-
-
-function updateFavoriteButton() {
-
-    const button =
-        document.getElementById(
-            "favoriteButton"
-        );
-
-
-    const user =
-        getCurrentUser();
-
-
-    if (
-        !user ||
-        !currentVideo
-    ) {
-
-        button.textContent =
-            "♡ Favorito";
-
-        return;
-
-    }
-
-
-    const favorite =
-        user.favorites.includes(
-            currentVideo.id
-        );
-
-
-    button.textContent =
-        favorite
-            ? "♥ En favoritos"
-            : "♡ Favorito";
-
-}
-
-
-document
-    .getElementById(
-        "favoriteButton"
-    )
-    .addEventListener(
-        "click",
-        toggleFavorite
-    );
-
-
-/* =========================================================
-   TOOLS
-========================================================= */
-
-document
-    .getElementById("toolsButton")
-    .addEventListener(
-        "click",
-        () => {
-
-            toolsPanel.classList.toggle(
-                "hidden"
-            );
-
-        }
-    );
-
-
-document
-    .getElementById("closeTools")
-    .addEventListener(
-        "click",
-        () => {
-
-            toolsPanel.classList.add(
-                "hidden"
-            );
-
-        }
-    );
-
-
-document
-    .getElementById(
-        "backgroundColor"
-    )
-    .addEventListener(
-        "input",
-        applyAppearance
-    );
-
-
-document
-    .getElementById(
-        "backgroundType"
-    )
-    .addEventListener(
-        "change",
-        applyAppearance
-    );
-
-
-document
-    .getElementById(
-        "backgroundImage"
-    )
-    .addEventListener(
-        "change",
-        event => {
-
-            const file =
-                event.target.files[0];
-
-
-            if (!file) {
-                return;
-            }
-
-
-            const reader =
-                new FileReader();
-
-
-            reader.onload =
-                () => {
-
-                    const appearance =
-                        getAppearance();
-
-
-                    appearance.image =
-                        reader.result;
-
-
-                    localStorage.setItem(
-                        STORAGE_APPEARANCE,
-                        JSON.stringify(
-                            appearance
-                        )
-                    );
-
-
-                    applyAppearance();
-
-                };
-
-
-            reader.readAsDataURL(
-                file
-            );
-
-        }
-    );
-
-
-document
-    .getElementById(
-        "resetAppearance"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            localStorage.removeItem(
-                STORAGE_APPEARANCE
-            );
-
-            applyAppearance();
-
-            document.getElementById(
-                "backgroundColor"
-            ).value =
-                "#0b0b0f";
-
-            document.getElementById(
-                "backgroundType"
-            ).value =
-                "solid";
-
-            document.getElementById(
-                "backgroundImage"
-            ).value =
-                "";
-
-        }
-    );
-
-
-function getAppearance() {
-
-    try {
-
-        return JSON.parse(
-            localStorage.getItem(
-                STORAGE_APPEARANCE
-            )
-        ) || {
-
-            color:
-                "#0b0b0f",
-
-            type:
-                "solid",
-
-            image:
-                ""
-
-        };
-
-    } catch {
-
-        return {
-
-            color:
-                "#0b0b0f",
-
-            type:
-                "solid",
-
-            image:
-                ""
-
-        };
-
-    }
-
-}
-
-
-function applyAppearance() {
-
-    const colorInput =
-        document.getElementById(
-            "backgroundColor"
-        );
-
-
-    const typeInput =
-        document.getElementById(
-            "backgroundType"
-        );
-
-
-    const appearance =
-        getAppearance();
-
-
-    appearance.color =
-        colorInput.value;
-
-
-    appearance.type =
-        typeInput.value;
-
-
-    if (
-        appearance.type ===
-        "gradient"
-    ) {
-
-        document.body.style.background =
-            `linear-gradient(
-                135deg,
-                ${appearance.color},
-                #050507
-            ) fixed`;
-
-    } else {
-
-        document.body.style.background =
-            `${appearance.color}`;
-
-    }
-
-
-    if (appearance.image) {
+    if (image) {
 
         document.body.style.backgroundImage =
-            `linear-gradient(
-                rgba(0,0,0,.45),
-                rgba(0,0,0,.45)
-            ),
-            url("${appearance.image}")`;
+            `url("${image}")`;
 
         document.body.style.backgroundSize =
             "cover";
@@ -1772,1083 +173,1312 @@ function applyAppearance() {
 
         document.body.style.backgroundPosition =
             "center";
-
     }
-
-
-    localStorage.setItem(
-        STORAGE_APPEARANCE,
-        JSON.stringify(
-            appearance
-        )
-    );
-
 }
 
 
-function loadAppearance() {
+backgroundColor.addEventListener(
+    "input",
+    function () {
 
-    const appearance =
-        getAppearance();
+        const color = this.value;
+
+        document.documentElement.style.setProperty(
+            "--bg",
+            color
+        );
+
+        localStorage.setItem(
+            "verplay_background_color",
+            color
+        );
+    }
+);
 
 
-    document.getElementById(
-        "backgroundColor"
-    ).value =
-        appearance.color;
+backgroundImage.addEventListener(
+    "change",
+    function () {
+
+        const file = this.files[0];
+
+        if (!file) return;
 
 
-    document.getElementById(
-        "backgroundType"
-    ).value =
-        appearance.type;
+        const reader = new FileReader();
+
+        reader.onload = function (event) {
+
+            const image =
+                event.target.result;
+
+            document.body.style.backgroundImage =
+                `url("${image}")`;
+
+            document.body.style.backgroundSize =
+                "cover";
+
+            document.body.style.backgroundAttachment =
+                "fixed";
+
+            document.body.style.backgroundPosition =
+                "center";
+
+            localStorage.setItem(
+                "verplay_background_image",
+                image
+            );
+        };
+
+        reader.readAsDataURL(file);
+    }
+);
 
 
-    applyAppearance();
+resetBackground.addEventListener(
+    "click",
+    function () {
 
+        const defaultColor = "#0b0d12";
+
+        document.documentElement.style.setProperty(
+            "--bg",
+            defaultColor
+        );
+
+        backgroundColor.value =
+            defaultColor;
+
+        localStorage.setItem(
+            "verplay_background_color",
+            defaultColor
+        );
+    }
+);
+
+
+removeBackgroundImage.addEventListener(
+    "click",
+    function () {
+
+        document.body.style.backgroundImage =
+            "none";
+
+        localStorage.removeItem(
+            "verplay_background_image"
+        );
+
+        backgroundImage.value = "";
+    }
+);
+
+
+/* ============================================================
+   CONFIGURACIÓN MODAL
+============================================================ */
+
+function openSettings() {
+
+    settingsModal.classList.remove("hidden");
 }
 
 
-/* =========================================================
-   UPLOAD BUTTON
-========================================================= */
+function closeSettingsModal() {
 
-document
-    .getElementById("uploadButton")
-    .addEventListener(
-        "click",
-        () => {
-
-            const user =
-                getCurrentUser();
-
-
-            if (!user) {
-
-                showMessage(
-                    "🔒",
-                    "Necesitas una cuenta",
-                    "Para subir vídeos necesitas registrarte o iniciar sesión en VerPlay."
-                );
-
-                return;
-
-            }
-
-
-            showMessage(
-                "🚧",
-                "Función en desarrollo",
-                "La subida de vídeos estará disponible cuando VerPlay tenga un sistema de almacenamiento. Esta versión es solamente un prototipo."
-            );
-
-        }
-    );
-
-
-/* =========================================================
-   PROFILE
-========================================================= */
-
-function renderProfile() {
-
-    const user =
-        getCurrentUser();
-
-
-    if (!user) {
-
-        showPage("home");
-
-        return;
-
-    }
-
-
-    const avatar =
-        document.getElementById(
-            "profileAvatar"
-        );
-
-
-    if (user.avatar) {
-
-        avatar.src =
-            user.avatar;
-
-    } else {
-
-        avatar.src =
-            createDefaultAvatar(
-                user.name,
-                user.profileColor
-            );
-
-    }
-
-
-    document.getElementById(
-        "profileName"
-    ).textContent =
-        user.name;
-
-
-    document.getElementById(
-        "profileUsername"
-    ).textContent =
-        "@" + user.username;
-
-
-    document.getElementById(
-        "profileBio"
-    ).textContent =
-        user.bio || "Sin biografía.";
-
-
-    const interests =
-        document.getElementById(
-            "profileInterests"
-        );
-
-
-    interests.innerHTML =
-        user.interests
-            .map(
-                interest =>
-                    `<span class="interest">
-                        ${escapeHTML(interest)}
-                    </span>`
-            )
-            .join("");
-
-
-    const cover =
-        document.getElementById(
-            "profileCover"
-        );
-
-
-    if (user.profileBackground) {
-
-        cover.style.backgroundImage =
-            `url("${user.profileBackground}")`;
-
-    } else {
-
-        cover.style.backgroundImage =
-            `linear-gradient(
-                135deg,
-                ${user.profileColor},
-                #101016
-            )`;
-
-    }
-
-
-    document.documentElement.style
-        .setProperty(
-            "--accent",
-            user.profileColor
-        );
-
-
-    renderProfileContent();
-
+    settingsModal.classList.add("hidden");
 }
 
 
-function renderProfileContent() {
-
-    const content =
-        document.getElementById(
-            "profileContent"
-        );
+settingsButton.addEventListener(
+    "click",
+    openSettings
+);
 
 
-    if (profileTab === "achievements") {
-
-        renderAchievements(
-            content
-        );
-
-        return;
-
-    }
+closeSettings.addEventListener(
+    "click",
+    closeSettingsModal
+);
 
 
-    const user =
-        getCurrentUser();
+closeSettingsButton.addEventListener(
+    "click",
+    closeSettingsModal
+);
 
 
-    let list = [];
+/* ============================================================
+   RENDER VIDEOS
+============================================================ */
+
+function renderVideos(list = videos) {
+
+    grid.innerHTML = "";
+
+    count.textContent =
+        `${list.length} vídeo${list.length === 1 ? "" : "s"}`;
 
 
-    if (profileTab === "favorites") {
+    if (list.length === 0) {
 
-        list =
-            videos.filter(
-                video =>
-                    user.favorites.includes(
-                        video.id
-                    )
-            );
-
-    } else {
-
-        list =
-            user.videos.map(
-                id =>
-                    videos.find(
-                        video =>
-                            video.id === id
-                    )
-            ).filter(Boolean);
-
-    }
-
-
-    if (!list.length) {
-
-        content.innerHTML = `
-
-            <div class="empty-state">
-
-                <h3>
-                    ${
-                        profileTab === "favorites"
-                            ? "Todavía no tienes favoritos"
-                            : "Todavía no tienes vídeos"
-                    }
-                </h3>
-
-                <p>
-                    Esta sección se irá llenando
-                    cuando utilices VerPlay.
-                </p>
-
+        grid.innerHTML = `
+            <div style="
+                grid-column:1/-1;
+                text-align:center;
+                padding:60px;
+                color:#9299a8;
+            ">
+                No se encontraron vídeos.
             </div>
-
         `;
 
         return;
-
     }
 
 
-    content.innerHTML = "";
+    const user = getUser();
+
+    const favorites =
+        user?.favorites || [];
 
 
-    const grid =
-        document.createElement(
-            "div"
-        );
+    list.forEach(video => {
+
+        const isFavorite =
+            favorites.includes(video.id);
 
 
-    grid.className =
-        "video-grid";
+        const card =
+            document.createElement("article");
+
+        card.className =
+            "video-card";
 
 
-    list.forEach(
-        video => {
+        card.innerHTML = `
 
-            const card =
-                document.createElement(
-                    "article"
-                );
+            <div class="thumbnail">
 
+                ${video.icon}
 
-            card.className =
-                "video-card";
+            </div>
 
+            <div class="video-info">
 
-            card.innerHTML = `
+                <h3>
+                    ${video.title}
+                </h3>
 
-                <div class="thumbnail">
+                <p>
+                    ${video.description}
+                </p>
 
-                    <img
-                        src="${video.thumbnail}"
-                        alt=""
-                    >
+                <div class="video-bottom">
 
-                    <span class="duration">
-                        ${video.duration}
+                    <span>
+                        ${video.category}
                     </span>
+
+                    <button
+                        class="favorite ${isFavorite ? "active" : ""}"
+                        data-id="${video.id}"
+                        title="Favorito"
+                    >
+                        ${isFavorite ? "♥" : "♡"}
+                    </button>
 
                 </div>
 
-                <div class="video-info">
+            </div>
+        `;
 
-                    <h3 class="video-title">
-                        ${escapeHTML(video.title)}
-                    </h3>
 
-                    <div class="video-author">
-                        ${escapeHTML(video.author)}
-                    </div>
+        card.addEventListener(
+            "click",
+            function (event) {
 
+                if (
+                    event.target.classList.contains(
+                        "favorite"
+                    )
+                ) {
+                    return;
+                }
+
+                openVideo(video);
+            }
+        );
+
+
+        const favoriteButton =
+            card.querySelector(".favorite");
+
+
+        favoriteButton.addEventListener(
+            "click",
+            function () {
+
+                toggleFavorite(video.id);
+            }
+        );
+
+
+        grid.appendChild(card);
+    });
+}
+
+
+/* ============================================================
+   FAVORITOS
+============================================================ */
+
+function toggleFavorite(videoId) {
+
+    if (!currentUser) {
+
+        alert(
+            "Necesitas registrarte para guardar vídeos favoritos."
+        );
+
+        openRegister();
+
+        return;
+    }
+
+
+    const user = getUser();
+
+    if (!user.favorites) {
+        user.favorites = [];
+    }
+
+
+    const index =
+        user.favorites.indexOf(videoId);
+
+
+    if (index === -1) {
+
+        user.favorites.push(videoId);
+
+    } else {
+
+        user.favorites.splice(index, 1);
+    }
+
+
+    currentUser = user;
+
+    saveUser(user);
+
+    renderVideos();
+}
+
+
+/* ============================================================
+   REPRODUCTOR
+============================================================ */
+
+const modal =
+    document.getElementById("modal");
+
+const player =
+    document.getElementById("player");
+
+const modalTitle =
+    document.getElementById("modalTitle");
+
+const modalDesc =
+    document.getElementById("modalDesc");
+
+const closeModal =
+    document.getElementById("closeModal");
+
+
+function openVideo(video) {
+
+    modalTitle.textContent =
+        video.title;
+
+    modalDesc.textContent =
+        video.description;
+
+    /*
+        Estos vídeos todavía son prototipos,
+        así que no hay archivo real.
+    */
+
+    player.removeAttribute("src");
+
+    modal.classList.remove("hidden");
+}
+
+
+closeModal.addEventListener(
+    "click",
+    function () {
+
+        modal.classList.add("hidden");
+
+        player.pause();
+
+    }
+);
+
+
+/* ============================================================
+   CATEGORÍAS
+============================================================ */
+
+document
+    .querySelectorAll(".categories button")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            function () {
+
+                document
+                    .querySelectorAll(
+                        ".categories button"
+                    )
+                    .forEach(btn =>
+                        btn.classList.remove("active")
+                    );
+
+
+                this.classList.add("active");
+
+
+                const category =
+                    this.dataset.cat;
+
+
+                if (category === "Todos") {
+
+                    renderVideos();
+
+                } else {
+
+                    renderVideos(
+                        videos.filter(
+                            video =>
+                                video.category === category
+                        )
+                    );
+                }
+            }
+        );
+    });
+
+
+/* ============================================================
+   BUSCADOR
+============================================================ */
+
+function performSearch() {
+
+    const text =
+        search.value
+            .trim()
+            .toLowerCase();
+
+
+    if (!text) {
+
+        renderVideos();
+
+        return;
+    }
+
+
+    const results =
+        videos.filter(video =>
+
+            video.title
+                .toLowerCase()
+                .includes(text)
+
+            ||
+
+            video.description
+                .toLowerCase()
+                .includes(text)
+
+            ||
+
+            video.category
+                .toLowerCase()
+                .includes(text)
+        );
+
+
+    renderVideos(results);
+}
+
+
+search.addEventListener(
+    "input",
+    performSearch
+);
+
+
+searchButton.addEventListener(
+    "click",
+    performSearch
+);
+
+
+/* ============================================================
+   REGISTRO
+============================================================ */
+
+const profileButton =
+    document.getElementById("profileButton");
+
+const profileButtonText =
+    document.getElementById("profileButtonText");
+
+const registerModal =
+    document.getElementById("registerModal");
+
+const closeRegister =
+    document.getElementById("closeRegister");
+
+const registerButton =
+    document.getElementById("registerButton");
+
+const registerUsername =
+    document.getElementById("registerUsername");
+
+const registerPassword =
+    document.getElementById("registerPassword");
+
+const registerMessage =
+    document.getElementById("registerMessage");
+
+
+function openRegister() {
+
+    registerModal.classList.remove("hidden");
+
+    registerMessage.textContent = "";
+}
+
+
+function closeRegisterModal() {
+
+    registerModal.classList.add("hidden");
+}
+
+
+profileButton.addEventListener(
+    "click",
+    function () {
+
+        if (currentUser) {
+
+            openProfile();
+
+        } else {
+
+            openRegister();
+        }
+    }
+);
+
+
+closeRegister.addEventListener(
+    "click",
+    closeRegisterModal
+);
+
+
+registerButton.addEventListener(
+    "click",
+    register
+);
+
+
+function register() {
+
+    const username =
+        registerUsername.value.trim();
+
+    const password =
+        registerPassword.value;
+
+
+    if (username.length < 3) {
+
+        registerMessage.textContent =
+            "El nombre debe tener al menos 3 caracteres.";
+
+        return;
+    }
+
+
+    if (password.length < 4) {
+
+        registerMessage.textContent =
+            "La contraseña debe tener al menos 4 caracteres.";
+
+        return;
+    }
+
+
+    const existing =
+        localStorage.getItem(
+            "verplay_user"
+        );
+
+
+    if (existing) {
+
+        registerMessage.textContent =
+            "Ya existe una cuenta en este navegador.";
+
+        return;
+    }
+
+
+    const user = {
+
+        username: username,
+
+        password: password,
+
+        bio: "¡Bienvenido a mi perfil de VerPlay!",
+
+        interests:
+            "Todavía no has añadido tus intereses.",
+
+        avatar: "",
+
+        cover: "",
+
+        favorites: [],
+
+        achievements: [],
+
+        createdAt: Date.now(),
+
+        connectedSince: Date.now(),
+
+        totalOnlineTime: 0
+    };
+
+
+    saveUser(user);
+
+    currentUser = user;
+
+
+    registerMessage.textContent =
+        "¡Cuenta creada correctamente!";
+
+
+    setTimeout(
+        function () {
+
+            registerModal.classList.add(
+                "hidden"
+            );
+
+            updateUserButton();
+
+            openProfile();
+
+        },
+        600
+    );
+}
+
+
+/* ============================================================
+   PERFIL
+============================================================ */
+
+const profileModal =
+    document.getElementById("profileModal");
+
+const closeProfile =
+    document.getElementById("closeProfile");
+
+const profileName =
+    document.getElementById("profileName");
+
+const profileAvatar =
+    document.getElementById("profileAvatar");
+
+const profileCover =
+    document.getElementById("profileCover");
+
+const profileBio =
+    document.getElementById("profileBio");
+
+const profileInterests =
+    document.getElementById("profileInterests");
+
+const profileHours =
+    document.getElementById("profileHours");
+
+const profileAchievements =
+    document.getElementById(
+        "profileAchievements"
+    );
+
+const profileFavorites =
+    document.getElementById(
+        "profileFavorites"
+    );
+
+const achievements =
+    document.getElementById(
+        "achievements"
+    );
+
+const favoriteVideos =
+    document.getElementById(
+        "favoriteVideos"
+    );
+
+
+function openProfile() {
+
+    if (!currentUser) {
+
+        openRegister();
+
+        return;
+    }
+
+
+    updateOnlineTime();
+
+    renderProfile();
+
+    profileModal.classList.remove(
+        "hidden"
+    );
+}
+
+
+closeProfile.addEventListener(
+    "click",
+    function () {
+
+        profileModal.classList.add(
+            "hidden"
+        );
+    }
+);
+
+
+/* ============================================================
+   AVATAR DEFAULT
+============================================================ */
+
+function getDefaultAvatar(username) {
+
+    return (
+        "https://ui-avatars.com/api/?" +
+        "name=" +
+        encodeURIComponent(username) +
+        "&background=7c5cff&color=fff&size=256"
+    );
+}
+
+
+/* ============================================================
+   PERFIL
+============================================================ */
+
+function renderProfile() {
+
+    const user = getUser();
+
+    if (!user) return;
+
+
+    profileName.textContent =
+        user.username;
+
+
+    profileBio.textContent =
+        user.bio ||
+        "Sin descripción.";
+
+
+    profileInterests.textContent =
+        user.interests ||
+        "No especificados.";
+
+
+    profileAvatar.src =
+        user.avatar ||
+        getDefaultAvatar(
+            user.username
+        );
+
+
+    if (user.cover) {
+
+        profileCover.style.backgroundImage =
+            `url("${user.cover}")`;
+
+    } else {
+
+        profileCover.style.backgroundImage =
+            "linear-gradient(135deg,#302060,#11141b)";
+    }
+
+
+    const hours =
+        Math.floor(
+            (user.totalOnlineTime || 0)
+            / 3600000
+        );
+
+
+    profileHours.textContent =
+        hours;
+
+
+    profileAchievements.textContent =
+        user.achievements?.length || 0;
+
+
+    profileFavorites.textContent =
+        user.favorites?.length || 0;
+
+
+    renderAchievements(user);
+
+    renderFavorites(user);
+}
+
+
+/* ============================================================
+   TIEMPO CONECTADO
+============================================================ */
+
+function updateOnlineTime() {
+
+    if (!currentUser) return;
+
+
+    const user = getUser();
+
+    if (!user) return;
+
+
+    if (!user.connectedSince) {
+
+        user.connectedSince =
+            Date.now();
+    }
+
+
+    const now =
+        Date.now();
+
+
+    const session =
+        now - user.connectedSince;
+
+
+    user.totalOnlineTime =
+        (user.totalOnlineTime || 0)
+        + session;
+
+
+    user.connectedSince =
+        now;
+
+
+    checkAchievements(user);
+
+
+    saveUser(user);
+
+    currentUser = user;
+}
+
+
+/* ============================================================
+   LOGROS
+============================================================ */
+
+function checkAchievements(user) {
+
+    if (!user.achievements) {
+
+        user.achievements = [];
+    }
+
+
+    /*
+        1 hora conectado
+    */
+
+    if (
+        user.totalOnlineTime >=
+        3600000
+    ) {
+
+        if (
+            !user.achievements.includes(
+                "one_hour"
+            )
+        ) {
+
+            user.achievements.push(
+                "one_hour"
+            );
+        }
+    }
+
+
+    /*
+        Primer favorito
+    */
+
+    if (
+        user.favorites &&
+        user.favorites.length >= 1
+    ) {
+
+        if (
+            !user.achievements.includes(
+                "first_favorite"
+            )
+        ) {
+
+            user.achievements.push(
+                "first_favorite"
+            );
+        }
+    }
+}
+
+
+function renderAchievements(user) {
+
+    const achievementList = [
+
+        {
+            id: "one_hour",
+            icon: "⏱️",
+            name: "1 hora conectado"
+        },
+
+        {
+            id: "first_favorite",
+            icon: "❤️",
+            name: "Primer favorito"
+        },
+
+        {
+            id: "first_video",
+            icon: "🎬",
+            name: "Primer vídeo"
+        },
+
+        {
+            id: "creator",
+            icon: "⭐",
+            name: "Creador VerPlay"
+        }
+
+    ];
+
+
+    achievements.innerHTML = "";
+
+
+    achievementList.forEach(
+        achievement => {
+
+            const unlocked =
+                user.achievements?.includes(
+                    achievement.id
+                );
+
+
+            const div =
+                document.createElement(
+                    "div"
+                );
+
+
+            div.className =
+                "achievement" +
+                (
+                    unlocked
+                        ? ""
+                        : " locked"
+                );
+
+
+            div.innerHTML = `
+
+                <div class="achievement-icon">
+                    ${achievement.icon}
+                </div>
+
+                <div class="achievement-name">
+                    ${achievement.name}
                 </div>
 
             `;
 
 
-            card.addEventListener(
-                "click",
-                () =>
-                    openVideo(video)
-            );
-
-
-            grid.appendChild(
-                card
-            );
-
+            achievements.appendChild(div);
         }
     );
-
-
-    content.appendChild(
-        grid
-    );
-
 }
 
 
-/* =========================================================
-   PROFILE TABS
-========================================================= */
+/* ============================================================
+   FAVORITOS DEL PERFIL
+============================================================ */
 
-document
-    .querySelectorAll(".profile-tab")
-    .forEach(
-        button => {
+function renderFavorites(user) {
 
-            button.addEventListener(
-                "click",
-                () => {
-
-                    document
-                        .querySelectorAll(".profile-tab")
-                        .forEach(
-                            tab =>
-                                tab.classList.remove(
-                                    "active"
-                                )
-                        );
+    favoriteVideos.innerHTML = "";
 
 
-                    button.classList.add(
-                        "active"
-                    );
+    if (
+        !user.favorites ||
+        user.favorites.length === 0
+    ) {
+
+        favoriteVideos.innerHTML = `
+            <p>
+                Todavía no tienes vídeos favoritos.
+            </p>
+        `;
+
+        return;
+    }
 
 
-                    profileTab =
-                        button.dataset.profileTab;
+    user.favorites.forEach(id => {
 
-
-                    renderProfileContent();
-
-                }
+        const video =
+            videos.find(
+                video =>
+                    video.id === id
             );
 
-        }
-    );
+
+        if (!video) return;
 
 
-/* =========================================================
-   ACHIEVEMENTS RENDER
-========================================================= */
-
-function renderAchievements(container) {
-
-    const user =
-        getCurrentUser();
+        const div =
+            document.createElement(
+                "div"
+            );
 
 
-    container.innerHTML = `
-
-        <div class="achievement-grid">
-
-            ${achievements
-                .map(
-                    achievement => {
-
-                        const unlocked =
-                            user.unlockedAchievements
-                                .includes(
-                                    achievement.id
-                                );
+        div.className =
+            "favorite-item";
 
 
-                        return `
+        div.textContent =
+            `${video.icon} ${video.title}`;
 
-                            <div
-                                class="
-                                    achievement
-                                    ${
-                                        unlocked
-                                            ? ""
-                                            : "locked"
-                                    }
-                                "
-                            >
 
-                                <div
-                                    class="achievement-icon"
-                                >
-                                    ${achievement.icon}
-                                </div>
-
-                                <h3>
-                                    ${achievement.name}
-                                </h3>
-
-                                <p>
-                                    ${achievement.description}
-                                </p>
-
-                                <p style="
-                                    margin-top:10px;
-                                    color:${
-                                        unlocked
-                                            ? "var(--success)"
-                                            : "var(--muted)"
-                                    };
-                                ">
-
-                                    ${
-                                        unlocked
-                                            ? "✓ Desbloqueado"
-                                            : "🔒 Bloqueado"
-                                    }
-
-                                </p>
-
-                            </div>
-
-                        `;
-
-                    }
-                )
-                .join("")}
-
-        </div>
-
-    `;
-
+        favoriteVideos.appendChild(div);
+    });
 }
 
 
-/* =========================================================
-   EDIT PROFILE
-========================================================= */
+/* ============================================================
+   EDITAR PERFIL
+============================================================ */
 
-document
-    .getElementById(
+const editProfileButton =
+    document.getElementById(
         "editProfileButton"
-    )
-    .addEventListener(
-        "click",
-        openEditProfile
     );
 
-
-function openEditProfile() {
-
-    const user =
-        getCurrentUser();
-
-
-    if (!user) {
-        return;
-    }
-
-
+const editProfileModal =
     document.getElementById(
-        "editName"
-    ).value =
-        user.name;
+        "editProfileModal"
+    );
 
-
+const closeEditProfile =
     document.getElementById(
-        "editUsername"
-    ).value =
-        user.username;
+        "closeEditProfile"
+    );
 
-
+const avatarInput =
     document.getElementById(
-        "editBio"
-    ).value =
-        user.bio;
-
-
-    document.getElementById(
-        "editInterests"
-    ).value =
-        user.interests.join(", ");
-
-
-    document.getElementById(
-        "profileColor"
-    ).value =
-        user.profileColor;
-
-
-    editProfileModal.classList.remove(
-        "hidden"
-    );
-
-}
-
-
-function closeEditProfile() {
-
-    editProfileModal.classList.add(
-        "hidden"
-    );
-
-}
-
-
-window.closeEditProfile =
-    closeEditProfile;
-
-
-/* =========================================================
-   SAVE PROFILE
-========================================================= */
-
-document
-    .getElementById(
-        "saveProfileButton"
-    )
-    .addEventListener(
-        "click",
-        saveProfile
-    );
-
-
-function saveProfile() {
-
-    const user =
-        getCurrentUser();
-
-
-    if (!user) {
-        return;
-    }
-
-
-    const name =
-        document.getElementById(
-            "editName"
-        ).value.trim();
-
-
-    const username =
-        document.getElementById(
-            "editUsername"
-        ).value
-            .trim()
-            .toLowerCase();
-
-
-    const bio =
-        document.getElementById(
-            "editBio"
-        ).value.trim();
-
-
-    const interests =
-        document.getElementById(
-            "editInterests"
-        ).value
-            .split(",")
-            .map(
-                item =>
-                    item.trim()
-            )
-            .filter(Boolean);
-
-
-    const color =
-        document.getElementById(
-            "profileColor"
-        ).value;
-
-
-    if (!name || !username) {
-
-        showMessage(
-            "⚠️",
-            "Datos incompletos",
-            "El nombre y el usuario son obligatorios."
-        );
-
-        return;
-
-    }
-
-
-    const users =
-        getUsers();
-
-
-    const usernameExists =
-        users.some(
-            other =>
-                other.username === username &&
-                other.username !== user.username
-        );
-
-
-    if (usernameExists) {
-
-        showMessage(
-            "⚠️",
-            "Usuario ocupado",
-            "Ese nombre de usuario ya está siendo utilizado."
-        );
-
-        return;
-
-    }
-
-
-    user.name =
-        name;
-
-
-    user.username =
-        username;
-
-
-    user.bio =
-        bio;
-
-
-    user.interests =
-        interests;
-
-
-    user.profileColor =
-        color;
-
-
-    const backgroundInput =
-        document.getElementById(
-            "profileBackgroundInput"
-        );
-
-
-    const file =
-        backgroundInput.files[0];
-
-
-    if (file) {
-
-        const reader =
-            new FileReader();
-
-
-        reader.onload =
-            () => {
-
-                user.profileBackground =
-                    reader.result;
-
-                finishProfileSave(
-                    user
-                );
-
-            };
-
-
-        reader.readAsDataURL(
-            file
-        );
-
-    } else {
-
-        finishProfileSave(
-            user
-        );
-
-    }
-
-}
-
-
-function finishProfileSave(user) {
-
-    /*
-       Si el usuario cambia su username,
-       actualizamos la sesión.
-    */
-
-    localStorage.setItem(
-        STORAGE_CURRENT_USER,
-        user.username
-    );
-
-
-    saveCurrentUser(
-        user
-    );
-
-
-    closeEditProfile();
-
-    updateAccountUI();
-
-    renderProfile();
-
-}
-
-
-/* =========================================================
-   AVATAR
-========================================================= */
-
-document
-    .getElementById(
         "avatarInput"
-    )
-    .addEventListener(
-        "change",
-        event => {
+    );
 
-            const file =
-                event.target.files[0];
+const profileBackgroundInput =
+    document.getElementById(
+        "profileBackgroundInput"
+    );
+
+const interestsInput =
+    document.getElementById(
+        "interestsInput"
+    );
+
+const bioInput =
+    document.getElementById(
+        "bioInput"
+    );
+
+const saveProfileButton =
+    document.getElementById(
+        "saveProfileButton"
+    );
 
 
-            if (!file) {
-                return;
-            }
+editProfileButton.addEventListener(
+    "click",
+    function () {
+
+        const user = getUser();
+
+        if (!user) return;
 
 
-            const user =
-                getCurrentUser();
+        interestsInput.value =
+            user.interests || "";
 
 
-            if (!user) {
-                return;
-            }
+        bioInput.value =
+            user.bio || "";
 
+
+        editProfileModal.classList.remove(
+            "hidden"
+        );
+    }
+);
+
+
+closeEditProfile.addEventListener(
+    "click",
+    function () {
+
+        editProfileModal.classList.add(
+            "hidden"
+        );
+    }
+);
+
+
+/* ============================================================
+   GUARDAR PERFIL
+============================================================ */
+
+saveProfileButton.addEventListener(
+    "click",
+    async function () {
+
+        const user = getUser();
+
+        if (!user) return;
+
+
+        user.interests =
+            interestsInput.value.trim();
+
+
+        user.bio =
+            bioInput.value.trim();
+
+
+        /* Avatar */
+
+        if (
+            avatarInput.files &&
+            avatarInput.files[0]
+        ) {
+
+            user.avatar =
+                await readFile(
+                    avatarInput.files[0]
+                );
+        }
+
+
+        /* Fondo del perfil */
+
+        if (
+            profileBackgroundInput.files &&
+            profileBackgroundInput.files[0]
+        ) {
+
+            user.cover =
+                await readFile(
+                    profileBackgroundInput.files[0]
+                );
+        }
+
+
+        saveUser(user);
+
+        currentUser = user;
+
+
+        editProfileModal.classList.add(
+            "hidden"
+        );
+
+
+        renderProfile();
+    }
+);
+
+
+/* ============================================================
+   FILE READER
+============================================================ */
+
+function readFile(file) {
+
+    return new Promise(
+        (resolve, reject) => {
 
             const reader =
                 new FileReader();
 
 
             reader.onload =
-                () => {
-
-                    user.avatar =
-                        reader.result;
-
-
-                    saveCurrentUser(
-                        user
-                    );
-
-
-                    updateAccountUI();
-
-                    renderProfile();
-
-                };
-
-
-            reader.readAsDataURL(
-                file
-            );
-
-        }
-    );
-
-
-/* =========================================================
-   AUTH BUTTONS
-========================================================= */
-
-document
-    .getElementById(
-        "accountButton"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            const user =
-                getCurrentUser();
-
-
-            if (!user) {
-
-                openAuth(
-                    "login"
+                () => resolve(
+                    reader.result
                 );
 
-            } else {
 
-                showPage(
-                    "profile"
-                );
+            reader.onerror =
+                reject;
 
-            }
 
+            reader.readAsDataURL(file);
         }
+    );
+}
+
+
+/* ============================================================
+   LOGOUT
+============================================================ */
+
+const logoutButton =
+    document.getElementById(
+        "logoutButton"
     );
 
 
-document
-    .getElementById(
-        "authSubmit"
-    )
-    .addEventListener(
-        "click",
-        handleAuth
-    );
+logoutButton.addEventListener(
+    "click",
+    function () {
 
+        localStorage.removeItem(
+            "verplay_current_user"
+        );
 
-document
-    .getElementById(
-        "switchAuth"
-    )
-    .addEventListener(
-        "click",
-        () => {
+        currentUser = null;
 
-            authMode =
-                authMode === "login"
-                    ? "register"
-                    : "login";
+        profileModal.classList.add(
+            "hidden"
+        );
 
-            updateAuthModal();
-
-        }
-    );
-
-
-/* =========================================================
-   ESC
-========================================================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key ===
-            "Escape"
-        ) {
-
-            closeAuth();
-
-            closeVideo();
-
-            closeEditProfile();
-
-            closeMessage();
-
-            toolsPanel.classList.add(
-                "hidden"
-            );
-
-        }
-
+        updateUserButton();
     }
 );
 
 
-/* =========================================================
-   MESSAGE
-========================================================= */
+/* ============================================================
+   BOTÓN DE USUARIO
+============================================================ */
 
-function showMessage(
-    icon,
-    title,
-    text
-) {
+function updateUserButton() {
 
-    document.getElementById(
-        "messageIcon"
-    ).textContent =
-        icon;
+    if (currentUser) {
 
+        profileButtonText.textContent =
+            currentUser.username;
 
-    document.getElementById(
-        "messageTitle"
-    ).textContent =
-        title;
+    } else {
 
-
-    document.getElementById(
-        "messageText"
-    ).textContent =
-        text;
-
-
-    document
-        .getElementById(
-            "messageModal"
-        )
-        .classList.remove(
-            "hidden"
-        );
-
-}
-
-
-function closeMessage() {
-
-    document
-        .getElementById(
-            "messageModal"
-        )
-        .classList.add(
-            "hidden"
-        );
-
-}
-
-
-window.closeMessage =
-    closeMessage;
-
-
-/* =========================================================
-   SCROLL
-========================================================= */
-
-function scrollToVideos() {
-
-    document
-        .getElementById(
-            "videosSection"
-        )
-        .scrollIntoView({
-            behavior:
-                "smooth"
-        });
-
-}
-
-
-window.scrollToVideos =
-    scrollToVideos;
-
-
-/* =========================================================
-   DEFAULT AVATAR
-========================================================= */
-
-function createDefaultAvatar(
-    name,
-    color
-) {
-
-    const letter =
-        (name || "U")
-            .charAt(0)
-            .toUpperCase();
-
-
-    const svg = `
-
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="300"
-            height="300"
-        >
-
-            <rect
-                width="300"
-                height="300"
-                fill="${color}"
-            />
-
-            <text
-                x="50%"
-                y="54%"
-                dominant-baseline="middle"
-                text-anchor="middle"
-                font-size="130"
-                font-family="Arial"
-                font-weight="bold"
-                fill="white"
-            >
-                ${letter}
-            </text>
-
-        </svg>
-
-    `;
-
-
-    return (
-        "data:image/svg+xml;charset=utf-8," +
-        encodeURIComponent(svg)
-    );
-
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-========================================================= */
-
-function escapeHTML(
-    value
-) {
-
-    const element =
-        document.createElement(
-            "div"
-        );
-
-
-    element.textContent =
-        value;
-
-
-    return element.innerHTML;
-
-}
-
-
-/* =========================================================
-   INITIALIZATION
-========================================================= */
-
-function initialize() {
-
-    loadAppearance();
-
-    updateAccountUI();
-
-    renderVideos();
-
-
-    const user =
-        getCurrentUser();
-
-
-    if (user) {
-
-        user.stats.lastSession =
-            Date.now();
-
-
-        saveCurrentUser(
-            user
-        );
-
-
-        checkAchievements();
-
+        profileButtonText.textContent =
+            "Registrarse";
     }
-
 }
 
 
-initialize();
+/* ============================================================
+   CERRAR MODALES AL HACER CLICK FUERA
+============================================================ */
+
+document
+    .querySelectorAll(".modal")
+    .forEach(modalElement => {
+
+        modalElement.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    modalElement
+                ) {
+
+                    modalElement.classList.add(
+                        "hidden"
+                    );
+                }
+            }
+        );
+    });
+
+
+/* ============================================================
+   INICIALIZACIÓN
+============================================================ */
+
+loadBackground();
+
+updateUserButton();
+
+renderVideos();
+
+
+/*
+    Actualizamos el tiempo periódicamente.
+*/
+
+setInterval(
+    function () {
+
+        if (!currentUser) return;
+
+        const user = getUser();
+
+        if (!user) return;
+
+
+        user.totalOnlineTime =
+            (
+                user.totalOnlineTime || 0
+            ) + 60000;
+
+
+        checkAchievements(user);
+
+        saveUser(user);
+
+        currentUser = user;
+
+    },
+    60000
+);
