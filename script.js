@@ -13,17 +13,10 @@ const DEFAULT_BG = "#0b0d12";
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const EMOJIS = ["😀","😂","😍","🔥","👍","👎","❤️","👏","😮","😢","🎉","🎮","🎵","💻","⭐","🚀"];
 
-const DEMO_VIDEOS = [
-    { id: "demo-1", title: "Gameplay de ejemplo", description: "Demo de VerPlay.", category: "Gaming", icon: "🎮", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-2", title: "Música relajante", description: "Música para relajarse.", category: "Música", icon: "🎵", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-3", title: "Animación de ejemplo", description: "Una pequeña animación.", category: "Animación", icon: "🎨", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-4", title: "Tecnología", description: "Vídeo sobre tecnología.", category: "Tecnología", icon: "💻", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-5", title: "Vídeo de la comunidad", description: "Contenido de usuarios.", category: "Otros", icon: "🎬", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-6", title: "Gaming retro", description: "Videojuegos clásicos.", category: "Gaming", icon: "🕹️", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 }
-];
+const DEMO_VIDEOS = [];
 
 let supabaseClient = null;
-let allVideos = [...DEMO_VIDEOS];
+let allVideos = [];
 let currentUser = null;
 let currentPlayingVideo = null;
 let captchaA = 0, captchaB = 0;
