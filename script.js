@@ -151,20 +151,29 @@ async function fetchRemoteVideos() {
             .eq("is_approved", true)
             .order("created_at", { ascending: false });
         if (error) { console.warn("fetch videos:", error.message); return []; }
-        return (data || []).map(row => ({
-            id: row.id,
-            title: row.title,
-            description: row.description || "",
-            category: row.category || "Otros",
-            icon: "🎬",
-            url: row.public_url,
-            storagePath: row.storage_path,
-            isDemo: false,
-            uploader: row.uploader_name || "Anónimo",
-            views: row.views || 0,
-            likes: row.likes || 0,
-            dislikes: row.dislikes || 0
-        }));
+        return (data || []).map(row => {
+            const storagePath = row.storage_path || "";
+            let url = row.public_url || "";
+            // Normalizar URL pública si falta o está incompleta
+            if (storagePath) {
+                const built = buildPublicVideoUrl(storagePath);
+                if (!url || !url.includes("/storage/v1/object/")) url = built;
+            }
+            return {
+                id: row.id,
+                title: row.title,
+                description: row.description || "",
+                category: row.category || "Otros",
+                icon: "🎬",
+                url,
+                storagePath,
+                isDemo: false,
+                uploader: row.uploader_name || "Anónimo",
+                views: row.views || 0,
+                likes: row.likes || 0,
+                dislikes: row.dislikes || 0
+            };
+        });
     } catch (e) { console.warn(e); return []; }
 }
 
@@ -174,24 +183,56 @@ async function refreshVideos() {
     renderVideos(getCurrentFilteredList());
 }
 
+function guessVideoMime(file) {
+    if (file.type && file.type.startsWith("video/")) return file.type;
+    const n = (file.name || "").toLowerCase();
+    if (n.endsWith(".webm")) return "video/webm";
+    if (n.endsWith(".mov")) return "video/quicktime";
+    if (n.endsWith(".avi")) return "video/x-msvideo";
+    return "video/mp4";
+}
+
+function buildPublicVideoUrl(storagePath) {
+    // URL pública estándar de Supabase Storage
+    const base = SUPABASE_URL.replace(/\/$/, "");
+    const clean = String(storagePath || "").replace(/^\/+/, "");
+    return base + "/storage/v1/object/public/videos/" + clean.split("/").map(encodeURIComponent).join("/");
+}
+
 async function uploadVideoToSupabase(file, meta) {
     if (!supabaseClient) throw new Error("Supabase no disponible");
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-    const path = Date.now() + "-" + safeName;
+    const mime = guessVideoMime(file);
+    const ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
+    const safeBase = (meta.title || "video").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 40) || "video";
+    const path = Date.now() + "-" + safeBase + "." + ext;
+
     const { error: upErr } = await supabaseClient.storage.from("videos").upload(path, file, {
-        contentType: file.type || "video/mp4",
-        upsert: false
+        contentType: mime,
+        upsert: false,
+        cacheControl: "3600"
     });
     if (upErr) throw upErr;
-    const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(path);
+
+    // Preferir URL construida manualmente (más fiable)
+    let publicUrl = buildPublicVideoUrl(path);
+    try {
+        const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(path);
+        if (urlData && urlData.publicUrl) publicUrl = urlData.publicUrl;
+    } catch (e) { console.warn(e); }
+
+    console.log("[VerPlay] Vídeo subido:", publicUrl);
+
     const { error: dbErr } = await supabaseClient.from("videos").insert({
         title: meta.title,
         description: meta.description,
         category: meta.category,
         storage_path: path,
-        public_url: urlData.publicUrl,
+        public_url: publicUrl,
         file_size: file.size,
-        mime_type: file.type,
+        mime_type: mime,
         uploader_name: meta.uploader,
         is_approved: true,
         views: 0,
@@ -199,7 +240,7 @@ async function uploadVideoToSupabase(file, meta) {
         dislikes: 0
     });
     if (dbErr) throw dbErr;
-    return urlData.publicUrl;
+    return publicUrl;
 }
 
 async function incrementViews(video) {
@@ -427,6 +468,31 @@ function toggleFavorite(videoId) {
 }
 
 /* ---------- player ---------- */
+async function resolvePlayableUrl(video) {
+    if (!video) return null;
+    if (video.isDemo) return null;
+
+    let url = video.url || null;
+    // Reconstruir por si la guardada está mal
+    if (video.storagePath) {
+        url = buildPublicVideoUrl(video.storagePath);
+    }
+
+    // Si el bucket no es público, intentar URL firmada (1 hora)
+    if (supabaseClient && video.storagePath) {
+        try {
+            const { data, error } = await supabaseClient.storage
+                .from("videos")
+                .createSignedUrl(video.storagePath, 3600);
+            if (!error && data && data.signedUrl) {
+                // Probar si la pública falla más abajo; de momento preferimos pública
+                video._signedUrl = data.signedUrl;
+            }
+        } catch (e) { console.warn(e); }
+    }
+    return url;
+}
+
 function openVideo(video) {
     currentPlayingVideo = video;
     const modal = document.getElementById("modal");
@@ -443,11 +509,6 @@ function openVideo(video) {
     updateModalStats(video);
     highlightVoteButtons(video.id);
 
-    if (player) {
-        if (video.url) { player.src = video.url; player.load(); }
-        else { player.removeAttribute("src"); }
-    }
-
     if (currentUser) {
         if (commentForm) commentForm.classList.remove("hidden");
         if (commentHint) commentHint.classList.add("hidden");
@@ -459,6 +520,56 @@ function openVideo(video) {
     openModal(modal);
     incrementViews(video);
     loadComments(video.id);
+
+    // Cargar vídeo de forma asíncrona con fallback a URL firmada
+    (async function () {
+        if (!player) return;
+        player.removeAttribute("src");
+        player.load();
+
+        if (video.isDemo || !video.url && !video.storagePath) {
+            console.warn("[VerPlay] Demo sin archivo real");
+            return;
+        }
+
+        let url = await resolvePlayableUrl(video);
+        console.log("[VerPlay] Reproduciendo:", url);
+
+        const tryPlay = (src) => new Promise((resolve) => {
+            const onErr = () => {
+                player.removeEventListener("error", onErr);
+                player.removeEventListener("loadeddata", onOk);
+                resolve(false);
+            };
+            const onOk = () => {
+                player.removeEventListener("error", onErr);
+                player.removeEventListener("loadeddata", onOk);
+                resolve(true);
+            };
+            player.addEventListener("error", onErr);
+            player.addEventListener("loadeddata", onOk);
+            player.src = src;
+            player.load();
+        });
+
+        let ok = url ? await tryPlay(url) : false;
+        if (!ok && video._signedUrl) {
+            console.warn("[VerPlay] Pública falló, probando URL firmada");
+            ok = await tryPlay(video._signedUrl);
+            if (ok) url = video._signedUrl;
+        }
+
+        if (!ok) {
+            console.error("[VerPlay] No se pudo cargar el vídeo. URL:", url);
+            if (desc) {
+                desc.innerHTML = (video.description || "") +
+                    '<br><br><span style="color:#ff6b8a">No se pudo reproducir el archivo. ' +
+                    'Abre esta URL en una pestaña nueva para comprobarla:<br>' +
+                    '<a href="' + (url || "#") + '" target="_blank" rel="noopener" style="color:#9a82ff;word-break:break-all">' +
+                    (url || "(sin URL)") + "</a></span>";
+            }
+        }
+    })();
 }
 
 function setupPlayer() {
