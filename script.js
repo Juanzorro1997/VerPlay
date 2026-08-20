@@ -244,6 +244,12 @@ async function fetchRemoteVideos() {
 
 async function refreshVideos() {
     const remote = await fetchRemoteVideos();
+    // Resolver miniaturas con URL firmada (evita 400 en /object/public/...)
+    for (let i = 0; i < remote.length; i++) {
+        if (remote[i].thumbnail) {
+            remote[i].thumbnail = await resolveThumbnailUrl(remote[i].thumbnail);
+        }
+    }
     allVideos = [...remote, ...DEMO_VIDEOS];
     remote.forEach(function (v) {
         console.log("[VerPlay] vídeo:", v.title, "| thumb:", v.thumbnail || "(vacía)");
@@ -259,6 +265,47 @@ function buildPublicThumbUrl(storagePath) {
     }
     const parts = clean.split("/").map(function (p) { return encodeURIComponent(p); });
     return base + "/storage/v1/object/public/videos/" + parts.join("/");
+}
+
+
+function extractStoragePathFromPublicUrl(url) {
+    if (!url) return "";
+    const s = String(url);
+    const marker = "/object/public/videos/";
+    const i = s.indexOf(marker);
+    if (i === -1) {
+        // path relativo tipo thumbs/xxx.png
+        if (s.indexOf("thumbs/") === 0) return s;
+        return "";
+    }
+    try {
+        return decodeURIComponent(s.slice(i + marker.length).split("?")[0]);
+    } catch (e) {
+        return s.slice(i + marker.length).split("?")[0];
+    }
+}
+
+async function resolveThumbnailUrl(storedUrl) {
+    if (!storedUrl) return "";
+    // Si no hay supabase, devolver tal cual
+    if (!supabaseClient) return storedUrl;
+
+    const storagePath = extractStoragePathFromPublicUrl(storedUrl);
+    if (!storagePath) return storedUrl;
+
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from("videos")
+            .createSignedUrl(storagePath, 60 * 60 * 24 * 7); // 7 días
+        if (!error && data && data.signedUrl) {
+            console.log("[VerPlay] Thumb firmada:", storagePath);
+            return data.signedUrl;
+        }
+        console.warn("[VerPlay] Signed thumb falló:", error && error.message, storagePath);
+    } catch (e) {
+        console.warn(e);
+    }
+    return storedUrl;
 }
 
 function fileToDataURL(file) {
