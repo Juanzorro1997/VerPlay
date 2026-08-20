@@ -100,6 +100,10 @@
         <label for="uploadFile">Archivo de vídeo * (máx. 50 MB)</label>
         <input type="file" id="uploadFile" accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,.mp4,.webm,.mov,.avi">
         <p id="uploadFileInfo" class="hint"></p>
+        <label for="uploadThumb">Miniatura (opcional)</label>
+        <input type="file" id="uploadThumb" accept="image/jpeg,image/png,image/webp,image/gif">
+        <p class="hint">Si no eliges imagen, se usará un fotograma del vídeo o un diseño por defecto.</p>
+        <div id="uploadThumbPreview" class="thumb-preview hidden"></div>
         <label class="checkbox-row">
             <input type="checkbox" id="uploadAgree">
             <span>Confirmo que este vídeo <strong>no</strong> contiene contenido +18, gore, violencia extrema, odio ni material ilegal.</span>
