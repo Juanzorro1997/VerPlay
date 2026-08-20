@@ -245,6 +245,9 @@ async function fetchRemoteVideos() {
 async function refreshVideos() {
     const remote = await fetchRemoteVideos();
     allVideos = [...remote, ...DEMO_VIDEOS];
+    remote.forEach(function (v) {
+        console.log("[VerPlay] vídeo:", v.title, "| thumb:", v.thumbnail || "(vacía)");
+    });
     renderVideos(getCurrentFilteredList());
 }
 
@@ -309,36 +312,40 @@ function captureVideoFrame(file) {
 
 async function uploadThumbnailBlob(blobOrFile, baseName) {
     if (!supabaseClient || !blobOrFile) return "";
-    const isFile = typeof File !== "undefined" && blobOrFile instanceof File;
     let body = blobOrFile;
     let mime = (blobOrFile.type && blobOrFile.type.startsWith("image/")) ? blobOrFile.type : "image/jpeg";
     let ext = "jpg";
-    if (mime.includes("png")) ext = "png";
-    else if (mime.includes("webp")) ext = "webp";
-    else if (mime.includes("gif")) ext = "gif";
-    else mime = "image/jpeg";
+    if (mime.indexOf("png") !== -1) ext = "png";
+    else if (mime.indexOf("webp") !== -1) ext = "webp";
+    else if (mime.indexOf("gif") !== -1) ext = "gif";
+    else { mime = "image/jpeg"; ext = "jpg"; }
 
-    const path = "thumbs/" + Date.now() + "-" + String(baseName || "thumb").replace(/[^a-z0-9_-]/gi, "") + "." + ext;
+    const safe = String(baseName || "thumb").replace(/[^a-z0-9_-]/gi, "") || "thumb";
+    const storagePath = "thumbs/" + Date.now() + "-" + safe + "." + ext;
 
-    // Si es imagen del usuario, subir el File directo; si es blob del canvas, convertirlo
-    if (!isFile && blobOrFile instanceof Blob) {
-        body = blobOrFile;
-        mime = "image/jpeg";
-        // path already jpg
-    }
-
-    const { error } = await supabaseClient.storage.from("videos").upload(path, body, {
+    const { error } = await supabaseClient.storage.from("videos").upload(storagePath, body, {
         contentType: mime,
         upsert: false,
         cacheControl: "3600"
     });
     if (error) {
-        console.warn("thumb upload:", error.message, error);
+        console.warn("[VerPlay] Error miniatura:", error.message);
         return "";
     }
-    const url = buildPublicThumbUrl(path);
-    console.log("[VerPlay] Miniatura subida:", url);
-    return url;
+
+    let publicUrl = "";
+    try {
+        const { data } = supabaseClient.storage.from("videos").getPublicUrl(storagePath);
+        if (data && data.publicUrl) publicUrl = data.publicUrl;
+    } catch (e) { console.warn(e); }
+
+    if (!publicUrl) {
+        const base = SUPABASE_URL.endsWith("/") ? SUPABASE_URL.slice(0, -1) : SUPABASE_URL;
+        publicUrl = base + "/storage/v1/object/public/videos/" + storagePath;
+    }
+
+    console.log("[VerPlay] Miniatura OK:", storagePath, "->", publicUrl);
+    return publicUrl;
 }
 
 function guessVideoMime(file) {
@@ -653,7 +660,7 @@ function renderVideos(list) {
         card.className = "video-card";
         const thumbSrc = video.thumbnail || "";
         const thumbHtml = thumbSrc
-            ? `<img class="thumb-img" src="${escapeHtml(thumbSrc)}" alt="" loading="lazy" onerror="this.style.opacity='0'">`
+            ? `<img class="thumb-img" src="${escapeHtml(thumbSrc)}" alt="" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous">`
             : `<div class="thumb-empty"></div>`;
         card.innerHTML = `
             <div class="thumbnail">${thumbHtml}<div class="thumb-play">▶</div></div>
