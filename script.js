@@ -659,11 +659,12 @@ function renderVideos(list) {
         const card = document.createElement("article");
         card.className = "video-card";
         const thumbSrc = video.thumbnail || "";
-        const thumbHtml = thumbSrc
-            ? `<img class="thumb-img" src="${escapeHtml(thumbSrc)}" alt="" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous">`
-            : `<div class="thumb-empty"></div>`;
+        // Usar background-image: más fiable que <img> con Storage
+        const thumbStyle = thumbSrc
+            ? `style="background-image:url('${escapeHtml(thumbSrc).replace(/'/g, "%27")}')"`
+            : "";
         card.innerHTML = `
-            <div class="thumbnail">${thumbHtml}<div class="thumb-play">▶</div></div>
+            <div class="thumbnail has-thumb" ${thumbStyle}><div class="thumb-play">▶</div></div>
             <div class="video-info">
                 <h3>${escapeHtml(video.title)}</h3>
                 <p class="card-uploader">@${escapeHtml(video.uploader || "Anónimo")}</p>
