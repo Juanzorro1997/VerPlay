@@ -1,374 +1,374 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <meta
-        name="description"
-        content="VerPlay — Plataforma de vídeos"
-    >
-
-    <title>VerPlay</title>
+    <title>VerPlay — Vídeos</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<!-- =========================================================
-     TOPBAR
-========================================================= -->
+    <!-- ==============================
+         BARRA SUPERIOR
+    =============================== -->
 
-<header class="topbar">
+    <header class="topbar">
 
-    <a
-        href="#home"
-        class="logo"
-        onclick="showPage('home')"
-    >
-        Ver<span>Play</span>
-    </a>
+        <a href="#" class="logo" id="logo">
+            Ver<span>Play</span>
+        </a>
 
-
-    <div class="search-box">
-
-        <input
-            id="searchInput"
-            type="text"
-            placeholder="Buscar vídeos..."
-            autocomplete="off"
-        >
-
-        <button
-            id="searchButton"
-            type="button"
-            aria-label="Buscar"
-        >
-            🔍
-        </button>
-
-    </div>
-
-
-    <div class="top-actions">
-
-        <button
-            id="toolsButton"
-            class="icon-button"
-            title="Herramientas"
-        >
-            ⚙️
-        </button>
-
-
-        <button
-            id="uploadButton"
-            class="upload-button"
-            type="button"
-        >
-            ＋ Subir
-        </button>
-
-
-        <button
-            id="accountButton"
-            class="account-button"
-            type="button"
-        >
-            <span id="accountAvatar">👤</span>
-
-            <span id="accountName">
-                Entrar
-            </span>
-        </button>
-
-    </div>
-
-</header>
-
-
-<!-- =========================================================
-     TOOLS PANEL
-========================================================= -->
-
-<div
-    id="toolsPanel"
-    class="tools-panel hidden"
->
-
-    <div class="panel-header">
-
-        <h3>
-            ⚙️ Herramientas
-        </h3>
-
-        <button
-            id="closeTools"
-            class="panel-close"
-        >
-            ×
-        </button>
-
-    </div>
-
-
-    <div class="tool-section">
-
-        <label>
-            Fondo de VerPlay
-        </label>
-
-
-        <div class="color-row">
-
+        <div class="search">
             <input
-                id="backgroundColor"
-                type="color"
-                value="#0b0b0f"
+                type="text"
+                id="search"
+                placeholder="Buscar vídeos..."
+                autocomplete="off"
             >
 
-            <span>
-                Color
-            </span>
+            <button id="searchButton">
+                🔍
+            </button>
+        </div>
+
+        <div class="top-actions">
+
+            <!-- Usuario -->
+
+            <button
+                class="profile-button"
+                id="profileButton"
+            >
+                👤
+                <span id="profileButtonText">
+                    Registrarse
+                </span>
+            </button>
+
+
+            <!-- Herramientas -->
+
+            <button
+                class="settings-button"
+                id="settingsButton"
+                title="Configuración"
+            >
+                ⚙️
+            </button>
 
         </div>
 
-    </div>
+    </header>
 
 
-    <div class="tool-section">
+    <!-- ==============================
+         CATEGORÍAS
+    =============================== -->
 
-        <label>
-            Tipo de fondo
-        </label>
+    <nav class="categories">
 
-        <select id="backgroundType">
-
-            <option value="solid">
-                Color sólido
-            </option>
-
-            <option value="gradient">
-                Degradado
-            </option>
-
-        </select>
-
-    </div>
-
-
-    <div class="tool-section">
-
-        <label>
-            Imagen de fondo
-        </label>
-
-        <input
-            id="backgroundImage"
-            type="file"
-            accept="image/*"
-        >
-
-    </div>
-
-
-    <div class="tool-section">
-
-        <button
-            id="resetAppearance"
-            class="secondary-button full"
-        >
-            Restaurar apariencia
+        <button class="active" data-cat="Todos">
+            Todos
         </button>
 
-    </div>
+        <button data-cat="Gaming">
+            Gaming
+        </button>
 
-</div>
+        <button data-cat="Música">
+            Música
+        </button>
 
+        <button data-cat="Animación">
+            Animación
+        </button>
 
-<!-- =========================================================
-     CATEGORIES
-========================================================= -->
+        <button data-cat="Tecnología">
+            Tecnología
+        </button>
 
-<nav class="categories">
+        <button data-cat="Otros">
+            Otros
+        </button>
 
-    <button
-        class="category active"
-        data-category="Todos"
-    >
-        Todos
-    </button>
-
-    <button
-        class="category"
-        data-category="Gaming"
-    >
-        🎮 Gaming
-    </button>
-
-    <button
-        class="category"
-        data-category="Música"
-    >
-        🎵 Música
-    </button>
-
-    <button
-        class="category"
-        data-category="Animación"
-    >
-        🎨 Animación
-    </button>
-
-    <button
-        class="category"
-        data-category="Tecnología"
-    >
-        💻 Tecnología
-    </button>
-
-    <button
-        class="category"
-        data-category="Otros"
-    >
-        Otros
-    </button>
-
-</nav>
+    </nav>
 
 
-<!-- =========================================================
-     APP
-========================================================= -->
+    <!-- ==============================
+         CONTENIDO
+    =============================== -->
 
-<main id="app">
+    <main>
 
+        <!-- HERO -->
 
-<!-- =========================================================
-     HOME
-========================================================= -->
+        <section class="hero">
 
-<section
-    id="page-home"
-    class="page"
->
+            <div class="hero-content">
 
-    <section class="hero">
+                <p class="eyebrow">
+                    VERPLAY
+                </p>
 
-        <div class="hero-content">
+                <h1>
+                    Tu sitio para
+                    <br>
+                    <span>ver vídeos.</span>
+                </h1>
 
-            <div class="eyebrow">
-                VERPLAY
-            </div>
-
-            <h1>
-                Tu sitio para
-                <span>ver vídeos.</span>
-            </h1>
-
-            <p>
-                Descubre vídeos, creadores y contenido
-                de toda la comunidad VerPlay.
-            </p>
-
-            <div class="hero-buttons">
-
-                <button
-                    class="primary-button"
-                    onclick="scrollToVideos()"
-                >
-                    ▶ Explorar vídeos
-                </button>
-
-                <button
-                    class="secondary-button"
-                    onclick="openAccount()"
-                >
-                    👤 Mi perfil
-                </button>
-
-            </div>
-
-        </div>
-
-
-        <div class="hero-card">
-
-            <div class="hero-play">
-                ▶
-            </div>
-
-            <strong>
-                Descubre contenido
-            </strong>
-
-            <span>
-                Una nueva plataforma de vídeos
-            </span>
-
-        </div>
-
-    </section>
-
-
-    <section id="videosSection">
-
-        <div class="section-header">
-
-            <div>
-
-                <h2>
-                    Vídeos
-                </h2>
-
-                <p id="videoCount">
-                    0 vídeos
+                <p class="lead">
+                    Descubre vídeos, creadores y contenido
+                    de toda la comunidad VerPlay.
                 </p>
 
             </div>
 
+
+            <div class="hero-card">
+
+                <div class="play">
+                    ▶
+                </div>
+
+                <p>
+                    Descubre contenido
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- VÍDEOS -->
+
+        <section class="section-head">
+
+            <h2>
+                Vídeos
+            </h2>
+
+            <span id="count">
+                0 vídeos
+            </span>
+
+        </section>
+
+
+        <section id="grid" class="grid"></section>
+
+    </main>
+
+
+    <!-- ==============================
+         MODAL REPRODUCTOR
+    =============================== -->
+
+    <div id="modal" class="modal hidden">
+
+        <div class="modal-box">
+
+            <button
+                class="close"
+                id="closeModal"
+            >
+                ×
+            </button>
+
+            <video
+                id="player"
+                controls
+                playsinline
+            ></video>
+
+            <h2 id="modalTitle">
+                Vídeo
+            </h2>
+
+            <p id="modalDesc">
+                Descripción
+            </p>
+
         </div>
-
-
-        <div
-            id="videoGrid"
-            class="video-grid"
-        ></div>
-
-    </section>
-
-</section>
-
-
-<!-- =========================================================
-     PROFILE
-========================================================= -->
-
-<section
-    id="page-profile"
-    class="page hidden"
->
-
-    <div
-        id="profileCover"
-        class="profile-cover"
-    >
-
-        <div class="profile-cover-overlay"></div>
 
     </div>
 
 
-    <div class="profile-container">
+    <!-- ==============================
+         MODAL CONFIGURACIÓN
+    =============================== -->
 
-        <div class="profile-main">
+    <div id="settingsModal" class="modal hidden">
 
-            <div class="profile-avatar-container">
+        <div class="settings-box">
+
+            <button
+                class="close"
+                id="closeSettings"
+            >
+                ×
+            </button>
+
+            <h2>
+                ⚙️ Configuración
+            </h2>
+
+            <p class="settings-subtitle">
+                Personaliza VerPlay.
+            </p>
+
+
+            <!-- COLOR -->
+
+            <div class="setting-section">
+
+                <h3>
+                    Fondo de VerPlay
+                </h3>
+
+                <div class="color-row">
+
+                    <label>
+                        Color
+                    </label>
+
+                    <input
+                        type="color"
+                        id="backgroundColor"
+                        value="#0b0d12"
+                    >
+
+                </div>
+
+                <button
+                    class="secondary-button"
+                    id="resetBackground"
+                >
+                    Restaurar fondo
+                </button>
+
+            </div>
+
+
+            <!-- IMAGEN -->
+
+            <div class="setting-section">
+
+                <h3>
+                    Imagen de fondo
+                </h3>
+
+                <input
+                    type="file"
+                    id="backgroundImage"
+                    accept="image/*"
+                >
+
+                <button
+                    class="secondary-button"
+                    id="removeBackgroundImage"
+                >
+                    Quitar imagen
+                </button>
+
+            </div>
+
+
+            <button
+                class="primary-button"
+                id="closeSettingsButton"
+            >
+                Guardar
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==============================
+         MODAL REGISTRO
+    =============================== -->
+
+    <div id="registerModal" class="modal hidden">
+
+        <div class="register-box">
+
+            <button
+                class="close"
+                id="closeRegister"
+            >
+                ×
+            </button>
+
+            <h2>
+                👤 Crear cuenta
+            </h2>
+
+            <p>
+                Crea tu perfil de VerPlay.
+            </p>
+
+
+            <input
+                type="text"
+                id="registerUsername"
+                placeholder="Nombre de usuario"
+                maxlength="20"
+            >
+
+
+            <input
+                type="password"
+                id="registerPassword"
+                placeholder="Contraseña"
+            >
+
+
+            <button
+                class="primary-button"
+                id="registerButton"
+            >
+                Registrarme
+            </button>
+
+
+            <p
+                id="registerMessage"
+                class="form-message"
+            ></p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==============================
+         MODAL PERFIL
+    =============================== -->
+
+    <div id="profileModal" class="modal hidden">
+
+        <div class="profile-box">
+
+            <button
+                class="close"
+                id="closeProfile"
+            >
+                ×
+            </button>
+
+
+            <div
+                id="profileCover"
+                class="profile-cover"
+            ></div>
+
+
+            <div class="profile-main">
 
                 <img
                     id="profileAvatar"
@@ -377,404 +377,200 @@
                     alt="Avatar"
                 >
 
-                <label
-                    for="avatarInput"
-                    class="avatar-edit"
-                >
-                    📷
-                </label>
 
-                <input
-                    id="avatarInput"
-                    type="file"
-                    accept="image/*"
-                    hidden
-                >
-
-            </div>
-
-
-            <div class="profile-information">
-
-                <h1 id="profileName">
+                <h2 id="profileName">
                     Usuario
-                </h1>
+                </h2>
 
-                <p id="profileUsername">
-                    @usuario
-                </p>
 
                 <p id="profileBio">
-                    Sin biografía.
+                    Sin información.
                 </p>
 
-                <div
-                    id="profileInterests"
-                    class="interest-list"
-                ></div>
+
+                <div class="profile-stats">
+
+                    <div>
+                        <strong id="profileHours">
+                            0
+                        </strong>
+
+                        <span>
+                            horas
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong id="profileAchievements">
+                            0
+                        </strong>
+
+                        <span>
+                            logros
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong id="profileFavorites">
+                            0
+                        </strong>
+
+                        <span>
+                            favoritos
+                        </span>
+                    </div>
+
+                </div>
+
+
+                <div class="profile-actions">
+
+                    <button
+                        class="secondary-button"
+                        id="editProfileButton"
+                    >
+                        ✏️ Editar perfil
+                    </button>
+
+                    <button
+                        class="secondary-button"
+                        id="logoutButton"
+                    >
+                        🚪 Cerrar sesión
+                    </button>
+
+                </div>
+
+
+                <div class="profile-content">
+
+                    <section>
+
+                        <h3>
+                            🎯 Intereses
+                        </h3>
+
+                        <p id="profileInterests">
+                            No especificados.
+                        </p>
+
+                    </section>
+
+
+                    <section>
+
+                        <h3>
+                            🏆 Logros
+                        </h3>
+
+                        <div
+                            id="achievements"
+                            class="achievements"
+                        ></div>
+
+                    </section>
+
+
+                    <section>
+
+                        <h3>
+                            ❤️ Vídeos favoritos
+                        </h3>
+
+                        <div
+                            id="favoriteVideos"
+                            class="favorite-videos"
+                        ></div>
+
+                    </section>
+
+                </div>
 
             </div>
 
+        </div>
+
+    </div>
+
+
+    <!-- ==============================
+         MODAL EDITAR PERFIL
+    =============================== -->
+
+    <div id="editProfileModal" class="modal hidden">
+
+        <div class="edit-box">
 
             <button
-                id="editProfileButton"
-                class="primary-button"
+                class="close"
+                id="closeEditProfile"
             >
+                ×
+            </button>
+
+            <h2>
                 ✏️ Editar perfil
-            </button>
-
-        </div>
-
-
-        <div class="profile-tabs">
-
-            <button
-                class="profile-tab active"
-                data-profile-tab="videos"
-            >
-                🎬 Mis vídeos
-            </button>
-
-            <button
-                class="profile-tab"
-                data-profile-tab="favorites"
-            >
-                ❤️ Favoritos
-            </button>
-
-            <button
-                class="profile-tab"
-                data-profile-tab="achievements"
-            >
-                🏆 Logros
-            </button>
-
-        </div>
-
-
-        <div
-            id="profileContent"
-            class="profile-content"
-        ></div>
-
-    </div>
-
-</section>
-
-</main>
-
-
-<!-- =========================================================
-     LOGIN MODAL
-========================================================= -->
-
-<div
-    id="authModal"
-    class="modal hidden"
->
-
-    <div class="modal-box auth-box">
-
-        <button
-            class="modal-close"
-            onclick="closeAuth()"
-        >
-            ×
-        </button>
-
-
-        <div class="auth-logo">
-            Ver<span>Play</span>
-        </div>
-
-
-        <h2 id="authTitle">
-            Iniciar sesión
-        </h2>
-
-        <p id="authDescription">
-            Entra en tu cuenta de VerPlay.
-        </p>
-
-
-        <div
-            id="registerFields"
-            class="hidden"
-        >
-
-            <label>
-                Nombre
-            </label>
-
-            <input
-                id="registerName"
-                type="text"
-                placeholder="Tu nombre"
-            >
-
-
-            <label>
-                Usuario
-            </label>
-
-            <input
-                id="registerUsername"
-                type="text"
-                placeholder="usuario"
-            >
-
-        </div>
-
-
-        <label>
-            Email
-        </label>
-
-        <input
-            id="authEmail"
-            type="email"
-            placeholder="correo@ejemplo.com"
-        >
-
-
-        <label>
-            Contraseña
-        </label>
-
-        <input
-            id="authPassword"
-            type="password"
-            placeholder="Contraseña"
-        >
-
-
-        <p
-            id="authError"
-            class="error-message hidden"
-        ></p>
-
-
-        <button
-            id="authSubmit"
-            class="primary-button full"
-        >
-            Iniciar sesión
-        </button>
-
-
-        <button
-            id="switchAuth"
-            class="text-button"
-        >
-            ¿No tienes cuenta? Crear una
-        </button>
-
-    </div>
-
-</div>
-
-
-<!-- =========================================================
-     EDIT PROFILE MODAL
-========================================================= -->
-
-<div
-    id="editProfileModal"
-    class="modal hidden"
->
-
-    <div class="modal-box">
-
-        <button
-            class="modal-close"
-            onclick="closeEditProfile()"
-        >
-            ×
-        </button>
-
-
-        <h2>
-            Editar perfil
-        </h2>
-
-
-        <label>
-            Nombre
-        </label>
-
-        <input
-            id="editName"
-            type="text"
-        >
-
-
-        <label>
-            Usuario
-        </label>
-
-        <input
-            id="editUsername"
-            type="text"
-        >
-
-
-        <label>
-            Biografía
-        </label>
-
-        <textarea
-            id="editBio"
-            rows="4"
-            placeholder="Cuéntanos algo sobre ti..."
-        ></textarea>
-
-
-        <label>
-            Intereses
-        </label>
-
-        <input
-            id="editInterests"
-            type="text"
-            placeholder="Gaming, Anime, Blender..."
-        >
-
-
-        <label>
-            Fondo de Home
-        </label>
-
-        <input
-            id="profileBackgroundInput"
-            type="file"
-            accept="image/*"
-        >
-
-
-        <label>
-            Color del perfil
-        </label>
-
-        <input
-            id="profileColor"
-            type="color"
-            value="#ff3d71"
-        >
-
-
-        <button
-            id="saveProfileButton"
-            class="primary-button full"
-        >
-            Guardar cambios
-        </button>
-
-    </div>
-
-</div>
-
-
-<!-- =========================================================
-     VIDEO MODAL
-========================================================= -->
-
-<div
-    id="videoModal"
-    class="modal hidden"
->
-
-    <div class="video-modal-box">
-
-        <button
-            id="closeVideo"
-            class="modal-close"
-        >
-            ×
-        </button>
-
-
-        <video
-            id="videoPlayer"
-            controls
-            playsinline
-        ></video>
-
-
-        <div class="video-modal-info">
-
-            <h2 id="modalVideoTitle">
-                Vídeo
             </h2>
 
-            <p id="modalVideoDescription">
+
+            <label>
+                Foto de perfil
+            </label>
+
+            <input
+                type="file"
+                id="avatarInput"
+                accept="image/*"
+            >
+
+
+            <label>
+                Intereses
+            </label>
+
+            <textarea
+                id="interestsInput"
+                placeholder="Gaming, anime, música..."
+            ></textarea>
+
+
+            <label>
                 Descripción
-            </p>
+            </label>
+
+            <textarea
+                id="bioInput"
+                placeholder="Cuéntanos algo sobre ti..."
+            ></textarea>
 
 
-            <div class="modal-video-actions">
+            <label>
+                Fondo de tu Home
+            </label>
 
-                <button
-                    id="favoriteButton"
-                    class="secondary-button"
-                >
-                    ♡ Favorito
-                </button>
+            <input
+                type="file"
+                id="profileBackgroundInput"
+                accept="image/*"
+            >
 
-            </div>
+
+            <button
+                class="primary-button"
+                id="saveProfileButton"
+            >
+                Guardar cambios
+            </button>
 
         </div>
 
     </div>
 
-</div>
 
+    <!-- JAVASCRIPT -->
 
-<!-- =========================================================
-     MESSAGE MODAL
-========================================================= -->
-
-<div
-    id="messageModal"
-    class="modal hidden"
->
-
-    <div class="modal-box message-box">
-
-        <button
-            class="modal-close"
-            onclick="closeMessage()"
-        >
-            ×
-        </button>
-
-        <div
-            id="messageIcon"
-            class="message-icon"
-        >
-            ℹ️
-        </div>
-
-        <h2 id="messageTitle">
-            Información
-        </h2>
-
-        <p id="messageText">
-            Mensaje
-        </p>
-
-        <button
-            class="primary-button"
-            onclick="closeMessage()"
-        >
-            Entendido
-        </button>
-
-    </div>
-
-</div>
-
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 
 </body>
+
 </html>
