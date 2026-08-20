@@ -211,13 +211,22 @@ async function fetchRemoteVideos() {
                 const built = buildPublicVideoUrl(storagePath);
                 if (!url || !url.includes("/storage/v1/object/")) url = built;
             }
+            let thumbnail = row.thumbnail_url || "";
+            // Si la miniatura es solo un path relativo, convertir a URL pública
+            if (thumbnail && !/^https?:\/\//i.test(thumbnail)) {
+                thumbnail = buildPublicThumbUrl(thumbnail.replace(/^\/+/, ""));
+            }
+            // Si apunta a un path de storage sin /object/public/
+            if (thumbnail && thumbnail.includes("supabase.co") && !thumbnail.includes("/storage/v1/object/")) {
+                thumbnail = "";
+            }
             return {
                 id: row.id,
                 title: row.title,
                 description: row.description || "",
                 category: row.category || "Otros",
                 icon: "🎬",
-                thumbnail: row.thumbnail_url || "",
+                thumbnail,
                 url,
                 storagePath,
                 isDemo: false,
@@ -291,19 +300,38 @@ function captureVideoFrame(file) {
     });
 }
 
-async function uploadThumbnailBlob(blob, baseName) {
-    if (!supabaseClient || !blob) return "";
-    const path = "thumbs/" + Date.now() + "-" + baseName + ".jpg";
-    const { error } = await supabaseClient.storage.from("videos").upload(path, blob, {
-        contentType: "image/jpeg",
+async function uploadThumbnailBlob(blobOrFile, baseName) {
+    if (!supabaseClient || !blobOrFile) return "";
+    const isFile = typeof File !== "undefined" && blobOrFile instanceof File;
+    let body = blobOrFile;
+    let mime = (blobOrFile.type && blobOrFile.type.startsWith("image/")) ? blobOrFile.type : "image/jpeg";
+    let ext = "jpg";
+    if (mime.includes("png")) ext = "png";
+    else if (mime.includes("webp")) ext = "webp";
+    else if (mime.includes("gif")) ext = "gif";
+    else mime = "image/jpeg";
+
+    const path = "thumbs/" + Date.now() + "-" + String(baseName || "thumb").replace(/[^a-z0-9_-]/gi, "") + "." + ext;
+
+    // Si es imagen del usuario, subir el File directo; si es blob del canvas, convertirlo
+    if (!isFile && blobOrFile instanceof Blob) {
+        body = blobOrFile;
+        mime = "image/jpeg";
+        // path already jpg
+    }
+
+    const { error } = await supabaseClient.storage.from("videos").upload(path, body, {
+        contentType: mime,
         upsert: false,
         cacheControl: "3600"
     });
     if (error) {
-        console.warn("thumb upload:", error.message);
+        console.warn("thumb upload:", error.message, error);
         return "";
     }
-    return buildPublicThumbUrl(path);
+    const url = buildPublicThumbUrl(path);
+    console.log("[VerPlay] Miniatura subida:", url);
+    return url;
 }
 
 function guessVideoMime(file) {
@@ -616,9 +644,14 @@ function renderVideos(list) {
         const isFav = favorites.includes(video.id);
         const card = document.createElement("article");
         card.className = "video-card";
-        const thumbHtml = video.thumbnail
-            ? `<img class="thumb-img" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy">`
-            : `<div class="thumb-fallback">${video.icon || "🎬"}</div>`;
+        const icon = video.icon || "🎬";
+        let thumbHtml;
+        if (video.thumbnail) {
+            thumbHtml = `<img class="thumb-img" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy" onerror="this.onerror=null;this.classList.add('hidden');var f=this.nextElementSibling;if(f)f.classList.remove('hidden');">` +
+                `<div class="thumb-fallback hidden">${icon}</div>`;
+        } else {
+            thumbHtml = `<div class="thumb-fallback">${icon}</div>`;
+        }
         card.innerHTML = `
             <div class="thumbnail">${thumbHtml}</div>
             <div class="video-info">
@@ -1237,3 +1270,4 @@ if (document.readyState === "loading") {
 } else {
     init();
 }
+
