@@ -14,12 +14,12 @@ const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const EMOJIS = ["😀","😂","😍","🔥","👍","👎","❤️","👏","😮","😢","🎉","🎮","🎵","💻","⭐","🚀"];
 
 const DEMO_VIDEOS = [
-    { id: "demo-1", title: "Gameplay de ejemplo", description: "Demo de VerPlay.", category: "Gaming", icon: "🎮", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-2", title: "Música relajante", description: "Música para relajarse.", category: "Música", icon: "🎵", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-3", title: "Animación de ejemplo", description: "Una pequeña animación.", category: "Animación", icon: "🎨", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-4", title: "Tecnología", description: "Vídeo sobre tecnología.", category: "Tecnología", icon: "💻", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-5", title: "Vídeo de la comunidad", description: "Contenido de usuarios.", category: "Otros", icon: "🎬", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
-    { id: "demo-6", title: "Gaming retro", description: "Videojuegos clásicos.", category: "Gaming", icon: "🕹️", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 }
+    { id: "demo-1", title: "Gameplay de ejemplo", description: "Demo de VerPlay.", category: "Gaming", icon: "🎮", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-2", title: "Música relajante", description: "Música para relajarse.", category: "Música", icon: "🎵", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-3", title: "Animación de ejemplo", description: "Una pequeña animación.", category: "Animación", icon: "🎨", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-4", title: "Tecnología", description: "Vídeo sobre tecnología.", category: "Tecnología", icon: "💻", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-5", title: "Vídeo de la comunidad", description: "Contenido de usuarios.", category: "Otros", icon: "🎬", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-6", title: "Gaming retro", description: "Videojuegos clásicos.", category: "Gaming", icon: "🕹️", isDemo: true, uploader: "VerPlay", thumbnail: "", views: 0, likes: 0, dislikes: 0 }
 ];
 
 let supabaseClient = null;
@@ -43,9 +43,61 @@ try {
 function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function safeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
 function safeRemove(k) { try { localStorage.removeItem(k); } catch {} }
-function saveUser(u) { safeSet("verplay_user", JSON.stringify(u)); safeSet("verplay_current_user", JSON.stringify(u)); }
-function getUser() { try { return JSON.parse(safeGet("verplay_user")) || null; } catch { return null; } }
-function getCurrentUserFromStorage() { try { return JSON.parse(safeGet("verplay_current_user")) || null; } catch { return null; } }
+function getAllUsers() {
+    try {
+        const raw = safeGet("verplay_users");
+        if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return arr;
+        }
+        // Migrar cuenta antigua (una sola) a la lista
+        const legacy = safeGet("verplay_user");
+        if (legacy) {
+            const u = JSON.parse(legacy);
+            if (u && u.username) {
+                const list = [u];
+                safeSet("verplay_users", JSON.stringify(list));
+                return list;
+            }
+        }
+        return [];
+    } catch { return []; }
+}
+function saveAllUsers(list) {
+    safeSet("verplay_users", JSON.stringify(list || []));
+}
+function saveUser(u) {
+    // Actualiza el usuario en la lista y la sesión actual
+    const list = getAllUsers();
+    const i = list.findIndex(x => x.username && u.username && x.username.toLowerCase() === u.username.toLowerCase());
+    if (i >= 0) list[i] = u; else list.push(u);
+    saveAllUsers(list);
+    safeSet("verplay_current_user", JSON.stringify(u));
+    // compat
+    safeSet("verplay_user", JSON.stringify(u));
+}
+function getUser() {
+    // Usuario de la sesión actual
+    try {
+        const cur = JSON.parse(safeGet("verplay_current_user") || "null");
+        if (cur && cur.username) return cur;
+    } catch {}
+    return null;
+}
+function getCurrentUserFromStorage() {
+    return getUser();
+}
+function findUserByCredentials(username, password) {
+    const list = getAllUsers();
+    return list.find(u =>
+        u.username && username &&
+        u.username.toLowerCase() === username.toLowerCase() &&
+        u.password === password
+    ) || null;
+}
+function userExists(username) {
+    return getAllUsers().some(u => u.username && username && u.username.toLowerCase() === username.toLowerCase());
+}
 function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
 function formatBytes(n) { if (n < 1024) return n + " B"; if (n < 1048576) return (n/1024).toFixed(1)+" KB"; return (n/1048576).toFixed(2)+" MB"; }
 function containsBlockedWords(t) { const x = (t||"").toLowerCase(); return BLOCKED_WORDS.some(w => x.includes(w)); }
@@ -165,6 +217,7 @@ async function fetchRemoteVideos() {
                 description: row.description || "",
                 category: row.category || "Otros",
                 icon: "🎬",
+                thumbnail: row.thumbnail_url || "",
                 url,
                 storagePath,
                 isDemo: false,
@@ -181,6 +234,76 @@ async function refreshVideos() {
     const remote = await fetchRemoteVideos();
     allVideos = [...remote, ...DEMO_VIDEOS];
     renderVideos(getCurrentFilteredList());
+}
+
+function buildPublicThumbUrl(storagePath) {
+    const base = SUPABASE_URL.replace(/\/$/, "");
+    const clean = String(storagePath || "").replace(/^\/+/, "");
+    return base + "/storage/v1/object/public/videos/" + clean.split("/").map(encodeURIComponent).join("/");
+}
+
+function fileToDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+    });
+}
+
+function captureVideoFrame(file) {
+    return new Promise((resolve) => {
+        try {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement("video");
+            video.preload = "metadata";
+            video.muted = true;
+            video.playsInline = true;
+            video.src = url;
+            const cleanup = () => { try { URL.revokeObjectURL(url); } catch {} };
+            const fail = () => { cleanup(); resolve(null); };
+            video.onerror = fail;
+            video.onloadeddata = () => {
+                try {
+                    const t = Math.min(1, (video.duration || 2) * 0.1);
+                    video.currentTime = t;
+                } catch { fail(); }
+            };
+            video.onseeked = () => {
+                try {
+                    const canvas = document.createElement("canvas");
+                    const w = video.videoWidth || 640;
+                    const h = video.videoHeight || 360;
+                    canvas.width = Math.min(w, 640);
+                    canvas.height = Math.round(canvas.width * (h / w));
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        cleanup();
+                        resolve(blob);
+                    }, "image/jpeg", 0.85);
+                } catch { fail(); }
+            };
+            setTimeout(fail, 8000);
+        } catch {
+            resolve(null);
+        }
+    });
+}
+
+async function uploadThumbnailBlob(blob, baseName) {
+    if (!supabaseClient || !blob) return "";
+    const path = "thumbs/" + Date.now() + "-" + baseName + ".jpg";
+    const { error } = await supabaseClient.storage.from("videos").upload(path, blob, {
+        contentType: "image/jpeg",
+        upsert: false,
+        cacheControl: "3600"
+    });
+    if (error) {
+        console.warn("thumb upload:", error.message);
+        return "";
+    }
+    return buildPublicThumbUrl(path);
 }
 
 function guessVideoMime(file) {
@@ -231,6 +354,7 @@ async function uploadVideoToSupabase(file, meta) {
         category: meta.category,
         storage_path: path,
         public_url: publicUrl,
+        thumbnail_url: meta.thumbnailUrl || null,
         file_size: file.size,
         mime_type: mime,
         uploader_name: meta.uploader,
@@ -492,8 +616,11 @@ function renderVideos(list) {
         const isFav = favorites.includes(video.id);
         const card = document.createElement("article");
         card.className = "video-card";
+        const thumbHtml = video.thumbnail
+            ? `<img class="thumb-img" src="${escapeHtml(video.thumbnail)}" alt="" loading="lazy">`
+            : `<div class="thumb-fallback">${video.icon || "🎬"}</div>`;
         card.innerHTML = `
-            <div class="thumbnail">${video.icon || "🎬"}</div>
+            <div class="thumbnail">${thumbHtml}</div>
             <div class="video-info">
                 <h3>${escapeHtml(video.title)}</h3>
                 <p class="card-uploader">@${escapeHtml(video.uploader || "Anónimo")}</p>
@@ -703,14 +830,26 @@ function setupUpload() {
         if (f.size > MAX_VIDEO_BYTES) msg += " ⚠️ > 50 MB";
         if (uploadFileInfo) uploadFileInfo.textContent = msg;
     });
+    const uploadThumb = document.getElementById("uploadThumb");
+    if (uploadThumb) uploadThumb.addEventListener("change", function () {
+        const prev = document.getElementById("uploadThumbPreview");
+        const f = this.files && this.files[0];
+        if (!prev) return;
+        if (!f) { prev.innerHTML = ""; prev.classList.add("hidden"); return; }
+        const url = URL.createObjectURL(f);
+        prev.innerHTML = '<img src="' + url + '" alt="Vista previa">';
+        prev.classList.remove("hidden");
+    });
     if (submit) submit.addEventListener("click", handleUpload);
 }
 
 function resetUploadForm() {
-    ["uploadTitle","uploadDescription","uploadFile"].forEach(id => {
+    ["uploadTitle","uploadDescription","uploadFile","uploadThumb"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
+    const prev = document.getElementById("uploadThumbPreview");
+    if (prev) { prev.innerHTML = ""; prev.classList.add("hidden"); }
     const agree = document.getElementById("uploadAgree");
     if (agree) agree.checked = false;
     const msg = document.getElementById("uploadMessage");
@@ -761,9 +900,33 @@ async function handleUpload() {
     if (progressText) progressText.textContent = "Subiendo...";
 
     try {
+        let thumbnailUrl = "";
+        const thumbInput = document.getElementById("uploadThumb");
+        const thumbFile = thumbInput && thumbInput.files && thumbInput.files[0] ? thumbInput.files[0] : null;
+
+        if (progressText) progressText.textContent = "Miniatura...";
+        if (progressBar) progressBar.style.width = "35%";
+
+        if (thumbFile) {
+            if (thumbFile.size > 2 * 1024 * 1024) {
+                setMsg("La miniatura no puede superar 2 MB.", true);
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Subir vídeo"; }
+                if (progressWrap) progressWrap.classList.add("hidden");
+                return;
+            }
+            thumbnailUrl = await uploadThumbnailBlob(thumbFile, "custom");
+        } else {
+            const frame = await captureVideoFrame(file);
+            if (frame) thumbnailUrl = await uploadThumbnailBlob(frame, "auto");
+        }
+
+        if (progressText) progressText.textContent = "Subiendo vídeo...";
+        if (progressBar) progressBar.style.width = "55%";
+
         await uploadVideoToSupabase(file, {
             title, description, category,
-            uploader: currentUser.username
+            uploader: currentUser.username,
+            thumbnailUrl
         });
         if (progressBar) progressBar.style.width = "100%";
         if (progressText) progressText.textContent = "100%";
@@ -849,8 +1012,8 @@ function register() {
         refreshCaptcha();
         return;
     }
-    if (getUser()) {
-        if (msg) msg.textContent = "Ya hay cuenta. Usa Iniciar sesión.";
+    if (userExists(username)) {
+        if (msg) msg.textContent = "Ese nombre de usuario ya existe. Elige otro o inicia sesión.";
         return;
     }
 
@@ -876,9 +1039,8 @@ function login() {
     const username = (document.getElementById("loginUsername") || {}).value.trim();
     const password = (document.getElementById("loginPassword") || {}).value;
     const msg = document.getElementById("authMessage");
-    const user = getUser();
-    if (!user) { if (msg) msg.textContent = "No hay cuenta. Regístrate."; return; }
-    if (user.username !== username || user.password !== password) {
+    const user = findUserByCredentials(username, password);
+    if (!user) {
         if (msg) msg.textContent = "Usuario o contraseña incorrectos.";
         return;
     }
