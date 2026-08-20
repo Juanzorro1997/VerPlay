@@ -1,104 +1,156 @@
 /* ============================================================
    VERPLAY + SUPABASE
-   Vídeos en Storage, metadatos en tabla public.videos
+   Subida solo registrados | likes | visitas | comentarios | CAPTCHA
 ============================================================ */
 
 const SUPABASE_URL = "https://bgkpsfcnljbzgnfqogbh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_XOQLuBwco2_YRTowEZR-KQ_vijirj3M";
 
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
-const ALLOWED_VIDEO_TYPES = [
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-    "video/x-msvideo"
-];
-const BLOCKED_WORDS = [
-    "porn", "xxx", "nsfw", "gore", "nude", "nudes", "onlyfans",
-    "explicit", "hentai", "violencia extrema", "snuff", "torture",
-    "+18", "xxx18", "adult content"
-];
-
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"];
+const BLOCKED_WORDS = ["porn","xxx","nsfw","gore","nude","nudes","onlyfans","explicit","hentai","violencia extrema","snuff","torture","+18","xxx18"];
 const DEFAULT_BG = "#0b0d12";
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const EMOJIS = ["😀","😂","😍","🔥","👍","👎","❤️","👏","😮","😢","🎉","🎮","🎵","💻","⭐","🚀"];
 
 const DEMO_VIDEOS = [
-    { id: "demo-1", title: "Gameplay de ejemplo", description: "Un vídeo de demostración de VerPlay.", category: "Gaming", icon: "🎮", isDemo: true },
-    { id: "demo-2", title: "Música relajante", description: "Música para relajarse.", category: "Música", icon: "🎵", isDemo: true },
-    { id: "demo-3", title: "Animación de ejemplo", description: "Una pequeña animación.", category: "Animación", icon: "🎨", isDemo: true },
-    { id: "demo-4", title: "Tecnología", description: "Vídeo sobre tecnología.", category: "Tecnología", icon: "💻", isDemo: true },
-    { id: "demo-5", title: "Vídeo de la comunidad", description: "Contenido creado por usuarios.", category: "Otros", icon: "🎬", isDemo: true },
-    { id: "demo-6", title: "Gaming retro", description: "Un viaje por los videojuegos clásicos.", category: "Gaming", icon: "🕹️", isDemo: true }
+    { id: "demo-1", title: "Gameplay de ejemplo", description: "Demo de VerPlay.", category: "Gaming", icon: "🎮", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-2", title: "Música relajante", description: "Música para relajarse.", category: "Música", icon: "🎵", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-3", title: "Animación de ejemplo", description: "Una pequeña animación.", category: "Animación", icon: "🎨", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-4", title: "Tecnología", description: "Vídeo sobre tecnología.", category: "Tecnología", icon: "💻", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-5", title: "Vídeo de la comunidad", description: "Contenido de usuarios.", category: "Otros", icon: "🎬", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 },
+    { id: "demo-6", title: "Gaming retro", description: "Videojuegos clásicos.", category: "Gaming", icon: "🕹️", isDemo: true, uploader: "VerPlay", views: 0, likes: 0, dislikes: 0 }
 ];
 
-let supabase = null;
+let supabaseClient = null;
 let allVideos = [...DEMO_VIDEOS];
 let currentUser = null;
+let currentPlayingVideo = null;
+let captchaA = 0, captchaB = 0;
 
 try {
-    if (window.supabase && window.supabase.createClient) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log("[VerPlay] Supabase OK");
+    } else {
+        console.warn("[VerPlay] supabase-js no cargó");
     }
 } catch (e) {
-    console.warn("Supabase no disponible:", e);
+    console.warn("[VerPlay] Error Supabase:", e);
 }
 
-/* ============================================================
-   UTILIDADES
-============================================================ */
+/* ---------- utils ---------- */
+function safeGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function safeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+function safeRemove(k) { try { localStorage.removeItem(k); } catch {} }
+function saveUser(u) { safeSet("verplay_user", JSON.stringify(u)); safeSet("verplay_current_user", JSON.stringify(u)); }
+function getUser() { try { return JSON.parse(safeGet("verplay_user")) || null; } catch { return null; } }
+function getCurrentUserFromStorage() { try { return JSON.parse(safeGet("verplay_current_user")) || null; } catch { return null; } }
+function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+function formatBytes(n) { if (n < 1024) return n + " B"; if (n < 1048576) return (n/1024).toFixed(1)+" KB"; return (n/1048576).toFixed(2)+" MB"; }
+function containsBlockedWords(t) { const x = (t||"").toLowerCase(); return BLOCKED_WORDS.some(w => x.includes(w)); }
+function openModal(el) { if (el) el.classList.remove("hidden"); }
+function closeModal(el) { if (el) el.classList.add("hidden"); }
 
-function safeGet(key) {
-    try { return localStorage.getItem(key); } catch { return null; }
+function getVoteKey(videoId) { return "verplay_vote_" + videoId; }
+function getUserVote(videoId) { return safeGet(getVoteKey(videoId)); }
+function setUserVote(videoId, vote) { if (vote) safeSet(getVoteKey(videoId), vote); else safeRemove(getVoteKey(videoId)); }
+
+/* ---------- background ---------- */
+function colorToRgba(hex, a) {
+    const h = (hex||"").replace("#","");
+    if (h.length !== 6) return `rgba(11,13,18,${a})`;
+    return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
 }
-function safeSet(key, value) {
-    try { localStorage.setItem(key, value); return true; } catch { return false; }
+function applyBackgroundColor(c) {
+    document.documentElement.style.setProperty("--bg", c);
+    document.body.style.backgroundColor = c;
+    document.documentElement.style.setProperty("--topbar-bg", colorToRgba(c, 0.92));
 }
-function safeRemove(key) {
-    try { localStorage.removeItem(key); } catch {}
+function applyBackgroundImage(url) {
+    if (url) {
+        document.body.style.backgroundImage = `url("${url}")`;
+        document.body.style.backgroundSize = "cover";
+        document.body.style.backgroundAttachment = "fixed";
+        document.body.style.backgroundPosition = "center";
+    } else document.body.style.backgroundImage = "none";
 }
-function saveUser(user) {
-    safeSet("verplay_user", JSON.stringify(user));
-    safeSet("verplay_current_user", JSON.stringify(user));
+function loadBackground() {
+    const c = safeGet("verplay_background_color") || DEFAULT_BG;
+    applyBackgroundColor(c);
+    const inp = document.getElementById("backgroundColor");
+    if (inp) inp.value = c;
+    const img = safeGet("verplay_background_image");
+    if (img) applyBackgroundImage(img);
 }
-function getUser() {
-    try { return JSON.parse(safeGet("verplay_user")) || null; } catch { return null; }
-}
-function getCurrentUserFromStorage() {
-    try { return JSON.parse(safeGet("verplay_current_user")) || null; } catch { return null; }
-}
-function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str || "";
-    return d.innerHTML;
-}
-function formatBytes(n) {
-    if (n < 1024) return n + " B";
-    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-    return (n / (1024 * 1024)).toFixed(2) + " MB";
-}
-function containsBlockedWords(text) {
-    const t = (text || "").toLowerCase();
-    return BLOCKED_WORDS.some(w => t.includes(w));
+function setupBackgroundControls() {
+    const bgColor = document.getElementById("backgroundColor");
+    const bgImage = document.getElementById("backgroundImage");
+    const resetBg = document.getElementById("resetBackground");
+    const removeBg = document.getElementById("removeBackgroundImage");
+    const status = document.getElementById("bgImageStatus");
+
+    if (bgColor) bgColor.addEventListener("input", function () {
+        applyBackgroundColor(this.value);
+        safeSet("verplay_background_color", this.value);
+    });
+    document.querySelectorAll(".preset-swatch").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const c = this.dataset.color;
+            if (bgColor) bgColor.value = c;
+            applyBackgroundColor(c);
+            safeSet("verplay_background_color", c);
+        });
+    });
+    if (bgImage) bgImage.addEventListener("change", function () {
+        const f = this.files && this.files[0];
+        if (!f) return;
+        if (f.size > MAX_IMAGE_BYTES) {
+            if (status) { status.textContent = "Imagen demasiado grande (~1,5 MB máx)."; status.style.color = "#ff6b8a"; }
+            return;
+        }
+        const r = new FileReader();
+        r.onload = e => {
+            applyBackgroundImage(e.target.result);
+            safeSet("verplay_background_image", e.target.result);
+            if (status) { status.textContent = "Imagen guardada."; status.style.color = ""; }
+        };
+        r.readAsDataURL(f);
+    });
+    if (resetBg) resetBg.addEventListener("click", () => {
+        applyBackgroundColor(DEFAULT_BG);
+        if (bgColor) bgColor.value = DEFAULT_BG;
+        safeSet("verplay_background_color", DEFAULT_BG);
+    });
+    if (removeBg) removeBg.addEventListener("click", () => {
+        applyBackgroundImage(null);
+        safeRemove("verplay_background_image");
+        if (bgImage) bgImage.value = "";
+        if (status) status.textContent = "";
+    });
 }
 
-/* ============================================================
-   SUPABASE — CARGAR Y SUBIR
-============================================================ */
+/* ---------- settings ---------- */
+function setupSettings() {
+    const btn = document.getElementById("settingsButton");
+    const modal = document.getElementById("settingsModal");
+    const close1 = document.getElementById("closeSettings");
+    const close2 = document.getElementById("closeSettingsButton");
+    if (btn) btn.addEventListener("click", () => openModal(modal));
+    if (close1) close1.addEventListener("click", () => closeModal(modal));
+    if (close2) close2.addEventListener("click", () => closeModal(modal));
+}
 
+/* ---------- supabase videos ---------- */
 async function fetchRemoteVideos() {
-    if (!supabase) return [];
+    if (!supabaseClient) return [];
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from("videos")
             .select("*")
             .eq("is_approved", true)
             .order("created_at", { ascending: false });
-
-        if (error) {
-            console.warn("Error cargando vídeos:", error.message);
-            return [];
-        }
-
+        if (error) { console.warn("fetch videos:", error.message); return []; }
         return (data || []).map(row => ({
             id: row.id,
             title: row.title,
@@ -108,12 +160,12 @@ async function fetchRemoteVideos() {
             url: row.public_url,
             storagePath: row.storage_path,
             isDemo: false,
-            uploader: row.uploader_name || ""
+            uploader: row.uploader_name || "Anónimo",
+            views: row.views || 0,
+            likes: row.likes || 0,
+            dislikes: row.dislikes || 0
         }));
-    } catch (e) {
-        console.warn(e);
-        return [];
-    }
+    } catch (e) { console.warn(e); return []; }
 }
 
 async function refreshVideos() {
@@ -123,182 +175,188 @@ async function refreshVideos() {
 }
 
 async function uploadVideoToSupabase(file, meta) {
-    if (!supabase) throw new Error("Supabase no está configurado.");
-
-    const ext = (file.name.split(".").pop() || "mp4").toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!supabaseClient) throw new Error("Supabase no disponible");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-    const path = `${Date.now()}-${safeName}`;
-
-    const { error: upErr } = await supabase.storage
-        .from("videos")
-        .upload(path, file, {
-            contentType: file.type || "video/mp4",
-            upsert: false,
-            cacheControl: "3600"
-        });
-
+    const path = Date.now() + "-" + safeName;
+    const { error: upErr } = await supabaseClient.storage.from("videos").upload(path, file, {
+        contentType: file.type || "video/mp4",
+        upsert: false
+    });
     if (upErr) throw upErr;
-
-    const { data: urlData } = supabase.storage.from("videos").getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
-
-    const { error: dbErr } = await supabase.from("videos").insert({
+    const { data: urlData } = supabaseClient.storage.from("videos").getPublicUrl(path);
+    const { error: dbErr } = await supabaseClient.from("videos").insert({
         title: meta.title,
         description: meta.description,
         category: meta.category,
         storage_path: path,
-        public_url: publicUrl,
+        public_url: urlData.publicUrl,
         file_size: file.size,
         mime_type: file.type,
-        uploader_name: meta.uploader || "Anónimo",
-        is_approved: true
+        uploader_name: meta.uploader,
+        is_approved: true,
+        views: 0,
+        likes: 0,
+        dislikes: 0
     });
-
     if (dbErr) throw dbErr;
-    return publicUrl;
+    return urlData.publicUrl;
 }
 
-/* ============================================================
-   FONDO
-============================================================ */
+async function incrementViews(video) {
+    if (!video || video.isDemo || !supabaseClient) return;
+    video.views = (video.views || 0) + 1;
+    updateModalStats(video);
+    try {
+        await supabaseClient.from("videos").update({ views: video.views }).eq("id", video.id);
+    } catch (e) { console.warn(e); }
+}
 
-function applyBackgroundColor(color) {
-    document.documentElement.style.setProperty("--bg", color);
-    document.body.style.backgroundColor = color;
-    document.documentElement.style.setProperty("--topbar-bg", colorToRgba(color, 0.92));
-}
-function colorToRgba(hex, alpha) {
-    const h = (hex || "").replace("#", "");
-    if (h.length !== 6) return `rgba(11,13,18,${alpha})`;
-    const r = parseInt(h.slice(0, 2), 16);
-    const g = parseInt(h.slice(2, 4), 16);
-    const b = parseInt(h.slice(4, 6), 16);
-    return `rgba(${r},${g},${b},${alpha})`;
-}
-function applyBackgroundImage(dataUrl) {
-    if (dataUrl) {
-        document.body.style.backgroundImage = `url("${dataUrl}")`;
-        document.body.style.backgroundSize = "cover";
-        document.body.style.backgroundAttachment = "fixed";
-        document.body.style.backgroundPosition = "center";
-        document.body.style.backgroundRepeat = "no-repeat";
+async function applyVote(video, type) {
+    if (!video || video.isDemo || !supabaseClient) {
+        alert(video && video.isDemo ? "Los demos no admiten votos." : "No disponible.");
+        return;
+    }
+    if (!currentUser) {
+        alert("Inicia sesión para votar.");
+        openAuth("login");
+        return;
+    }
+    const prev = getUserVote(video.id);
+    let likes = video.likes || 0;
+    let dislikes = video.dislikes || 0;
+
+    if (prev === "like") likes = Math.max(0, likes - 1);
+    if (prev === "dislike") dislikes = Math.max(0, dislikes - 1);
+
+    if (prev === type) {
+        setUserVote(video.id, null);
     } else {
-        document.body.style.backgroundImage = "none";
+        if (type === "like") likes++;
+        if (type === "dislike") dislikes++;
+        setUserVote(video.id, type);
     }
-}
-function loadBackground() {
-    const color = safeGet("verplay_background_color") || DEFAULT_BG;
-    const image = safeGet("verplay_background_image");
-    applyBackgroundColor(color);
-    const colorInput = document.getElementById("backgroundColor");
-    if (colorInput) colorInput.value = color;
-    if (image) applyBackgroundImage(image);
-}
-function setupBackgroundControls() {
-    const backgroundColor = document.getElementById("backgroundColor");
-    const backgroundImage = document.getElementById("backgroundImage");
-    const resetBackground = document.getElementById("resetBackground");
-    const removeBackgroundImage = document.getElementById("removeBackgroundImage");
-    const bgImageStatus = document.getElementById("bgImageStatus");
 
-    if (backgroundColor) {
-        backgroundColor.addEventListener("input", function () {
-            applyBackgroundColor(this.value);
-            safeSet("verplay_background_color", this.value);
-        });
+    video.likes = likes;
+    video.dislikes = dislikes;
+    updateModalStats(video);
+    highlightVoteButtons(video.id);
+
+    try {
+        await supabaseClient.from("videos").update({ likes, dislikes }).eq("id", video.id);
+    } catch (e) { console.warn(e); }
+}
+
+function updateModalStats(video) {
+    const v = document.getElementById("modalViews");
+    const l = document.getElementById("likeCount");
+    const d = document.getElementById("dislikeCount");
+    if (v) v.textContent = "👁 " + (video.views || 0) + " visitas";
+    if (l) l.textContent = String(video.likes || 0);
+    if (d) d.textContent = String(video.dislikes || 0);
+}
+
+function highlightVoteButtons(videoId) {
+    const vote = getUserVote(videoId);
+    const likeBtn = document.getElementById("likeBtn");
+    const dislikeBtn = document.getElementById("dislikeBtn");
+    if (likeBtn) likeBtn.classList.toggle("active-vote", vote === "like");
+    if (dislikeBtn) dislikeBtn.classList.toggle("active-vote", vote === "dislike");
+}
+
+/* ---------- comments ---------- */
+async function loadComments(videoId) {
+    const list = document.getElementById("commentsList");
+    if (!list) return;
+    list.innerHTML = "<p class='hint'>Cargando...</p>";
+    if (!supabaseClient || String(videoId).startsWith("demo-")) {
+        list.innerHTML = "<p class='hint'>Sin comentarios en demos.</p>";
+        return;
     }
-    document.querySelectorAll(".preset-swatch").forEach(btn => {
-        btn.addEventListener("click", function () {
-            const color = this.dataset.color;
-            if (backgroundColor) backgroundColor.value = color;
-            applyBackgroundColor(color);
-            safeSet("verplay_background_color", color);
+    try {
+        const { data, error } = await supabaseClient
+            .from("comments")
+            .select("*")
+            .eq("video_id", videoId)
+            .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            list.innerHTML = "<p class='hint'>Sé el primero en comentar.</p>";
+            return;
+        }
+        list.innerHTML = data.map(c => `
+            <div class="comment-item">
+                <div class="comment-meta"><strong>${escapeHtml(c.username)}</strong>
+                <span>${c.created_at ? new Date(c.created_at).toLocaleString() : ""}</span></div>
+                <p>${escapeHtml(c.content)}</p>
+                ${c.gif_url ? `<img class="comment-gif" src="${escapeHtml(c.gif_url)}" alt="GIF" loading="lazy">` : ""}
+            </div>`).join("");
+    } catch (e) {
+        console.warn(e);
+        list.innerHTML = "<p class='hint'>No se pudieron cargar comentarios.</p>";
+    }
+}
+
+async function sendComment() {
+    if (!currentUser) {
+        alert("Inicia sesión para comentar.");
+        openAuth("login");
+        return;
+    }
+    if (!currentPlayingVideo || currentPlayingVideo.isDemo) {
+        alert("No se puede comentar en demos.");
+        return;
+    }
+    const textEl = document.getElementById("commentText");
+    const gifEl = document.getElementById("commentGif");
+    const text = textEl ? textEl.value.trim() : "";
+    const gif = gifEl ? gifEl.value.trim() : "";
+    if (!text && !gif) {
+        alert("Escribe un comentario o pon un GIF.");
+        return;
+    }
+    if (containsBlockedWords(text)) {
+        alert("El comentario contiene términos no permitidos.");
+        return;
+    }
+    if (gif && !/^https?:\/\/.+\.(gif|webp)(\?.*)?$/i.test(gif) && !/giphy\.com|tenor\.com|media\./i.test(gif)) {
+        alert("La URL del GIF no parece válida.");
+        return;
+    }
+    try {
+        const { error } = await supabaseClient.from("comments").insert({
+            video_id: currentPlayingVideo.id,
+            username: currentUser.username,
+            content: text || " ",
+            gif_url: gif || null
         });
-    });
-    if (backgroundImage) {
-        backgroundImage.addEventListener("change", function () {
-            const file = this.files && this.files[0];
-            if (!file) return;
-            if (file.size > MAX_IMAGE_BYTES) {
-                if (bgImageStatus) {
-                    bgImageStatus.textContent = "Imagen demasiado grande (máx. ~1,5 MB).";
-                    bgImageStatus.style.color = "#ff6b8a";
+        if (error) throw error;
+        if (textEl) textEl.value = "";
+        if (gifEl) gifEl.value = "";
+        await loadComments(currentPlayingVideo.id);
+    } catch (e) {
+        alert("Error al comentar: " + (e.message || e));
+    }
+}
+
+function setupCommentsUI() {
+    const row = document.getElementById("emojiRow");
+    if (row) {
+        row.innerHTML = EMOJIS.map(e => `<button type="button" class="emoji-btn">${e}</button>`).join("");
+        row.querySelectorAll(".emoji-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const ta = document.getElementById("commentText");
+                if (ta) {
+                    ta.value += btn.textContent;
+                    ta.focus();
                 }
-                this.value = "";
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                applyBackgroundImage(e.target.result);
-                if (safeSet("verplay_background_image", e.target.result)) {
-                    if (bgImageStatus) {
-                        bgImageStatus.textContent = "Imagen aplicada y guardada.";
-                        bgImageStatus.style.color = "";
-                    }
-                } else if (bgImageStatus) {
-                    bgImageStatus.textContent = "No se pudo guardar (almacenamiento lleno).";
-                    bgImageStatus.style.color = "#ff6b8a";
-                }
-            };
-            reader.readAsDataURL(file);
+            });
         });
     }
-    if (resetBackground) {
-        resetBackground.addEventListener("click", function () {
-            applyBackgroundColor(DEFAULT_BG);
-            if (backgroundColor) backgroundColor.value = DEFAULT_BG;
-            safeSet("verplay_background_color", DEFAULT_BG);
-        });
-    }
-    if (removeBackgroundImage) {
-        removeBackgroundImage.addEventListener("click", function () {
-            applyBackgroundImage(null);
-            safeRemove("verplay_background_image");
-            if (backgroundImage) backgroundImage.value = "";
-            if (bgImageStatus) bgImageStatus.textContent = "";
-        });
-    }
+    const sendBtn = document.getElementById("sendCommentBtn");
+    if (sendBtn) sendBtn.addEventListener("click", sendComment);
 }
 
-/* ============================================================
-   MODALES
-============================================================ */
-
-function openModal(el) { if (el) el.classList.remove("hidden"); }
-function closeModal(el) { if (el) el.classList.add("hidden"); }
-
-function setupModalOutsideClick() {
-    document.querySelectorAll(".modal").forEach(modalElement => {
-        modalElement.addEventListener("click", function (event) {
-            if (event.target === modalElement) {
-                modalElement.classList.add("hidden");
-                if (modalElement.id === "modal") {
-                    const player = document.getElementById("player");
-                    if (player) { player.pause(); player.removeAttribute("src"); }
-                }
-            }
-        });
-    });
-}
-
-/* ============================================================
-   SETTINGS
-============================================================ */
-
-function setupSettings() {
-    const settingsButton = document.getElementById("settingsButton");
-    const settingsModal = document.getElementById("settingsModal");
-    const closeSettings = document.getElementById("closeSettings");
-    const closeSettingsButton = document.getElementById("closeSettingsButton");
-    if (settingsButton) settingsButton.addEventListener("click", () => openModal(settingsModal));
-    if (closeSettings) closeSettings.addEventListener("click", () => closeModal(settingsModal));
-    if (closeSettingsButton) closeSettingsButton.addEventListener("click", () => closeModal(settingsModal));
-}
-
-/* ============================================================
-   RENDER VÍDEOS
-============================================================ */
-
+/* ---------- render grid ---------- */
 function getCurrentFilteredList() {
     const active = document.querySelector(".categories button.active");
     const cat = active ? active.dataset.cat : "Todos";
@@ -308,9 +366,10 @@ function getCurrentFilteredList() {
     if (cat && cat !== "Todos") list = list.filter(v => v.category === cat);
     if (text) {
         list = list.filter(v =>
-            (v.title || "").toLowerCase().includes(text) ||
-            (v.description || "").toLowerCase().includes(text) ||
-            (v.category || "").toLowerCase().includes(text)
+            (v.title||"").toLowerCase().includes(text) ||
+            (v.description||"").toLowerCase().includes(text) ||
+            (v.category||"").toLowerCase().includes(text) ||
+            (v.uploader||"").toLowerCase().includes(text)
         );
     }
     return list;
@@ -320,62 +379,46 @@ function renderVideos(list) {
     const grid = document.getElementById("grid");
     const count = document.getElementById("count");
     if (!grid || !count) return;
-
     grid.innerHTML = "";
-    count.textContent = `${list.length} vídeo${list.length === 1 ? "" : "s"}`;
-
+    count.textContent = list.length + (list.length === 1 ? " vídeo" : " vídeos");
     if (list.length === 0) {
-        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:#9299a8;">No se encontraron vídeos.</div>`;
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#9299a8;">No se encontraron vídeos.</div>';
         return;
     }
-
     const user = getUser();
-    const favorites = (user && user.favorites) ? user.favorites : [];
-
+    const favorites = (user && user.favorites) || [];
     list.forEach(video => {
-        const isFavorite = favorites.includes(video.id);
+        const isFav = favorites.includes(video.id);
         const card = document.createElement("article");
         card.className = "video-card";
         card.innerHTML = `
             <div class="thumbnail">${video.icon || "🎬"}</div>
             <div class="video-info">
                 <h3>${escapeHtml(video.title)}</h3>
+                <p class="card-uploader">@${escapeHtml(video.uploader || "Anónimo")}</p>
                 <p>${escapeHtml(video.description)}</p>
                 <div class="video-bottom">
-                    <span>${escapeHtml(video.category)}</span>
-                    <button type="button" class="favorite ${isFavorite ? "active" : ""}" data-id="${escapeHtml(String(video.id))}" title="Favorito">
-                        ${isFavorite ? "♥" : "♡"}
-                    </button>
+                    <span>${escapeHtml(video.category)} · 👁 ${video.views || 0}</span>
+                    <button type="button" class="favorite ${isFav ? "active" : ""}" title="Favorito">${isFav ? "♥" : "♡"}</button>
                 </div>
             </div>`;
-
-        card.addEventListener("click", function (event) {
-            if (event.target.closest(".favorite")) return;
+        card.addEventListener("click", e => {
+            if (e.target.closest(".favorite")) return;
             openVideo(video);
         });
-        const favBtn = card.querySelector(".favorite");
-        if (favBtn) {
-            favBtn.addEventListener("click", function (e) {
-                e.stopPropagation();
-                toggleFavorite(video.id);
-            });
-        }
+        const fav = card.querySelector(".favorite");
+        if (fav) fav.addEventListener("click", e => { e.stopPropagation(); toggleFavorite(video.id); });
         grid.appendChild(card);
     });
 }
 
 function toggleFavorite(videoId) {
-    if (!currentUser) {
-        alert("Necesitas registrarte o iniciar sesión para guardar favoritos.");
-        openAuth("register");
-        return;
-    }
+    if (!currentUser) { alert("Regístrate para guardar favoritos."); openAuth("register"); return; }
     const user = getUser();
     if (!user) return;
     if (!user.favorites) user.favorites = [];
-    const index = user.favorites.indexOf(videoId);
-    if (index === -1) user.favorites.push(videoId);
-    else user.favorites.splice(index, 1);
+    const i = user.favorites.indexOf(videoId);
+    if (i === -1) user.favorites.push(videoId); else user.favorites.splice(i, 1);
     currentUser = user;
     saveUser(user);
     checkAchievements(user);
@@ -383,312 +426,282 @@ function toggleFavorite(videoId) {
     renderVideos(getCurrentFilteredList());
 }
 
-/* ============================================================
-   REPRODUCTOR
-============================================================ */
-
+/* ---------- player ---------- */
 function openVideo(video) {
+    currentPlayingVideo = video;
     const modal = document.getElementById("modal");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalDesc = document.getElementById("modalDesc");
+    const title = document.getElementById("modalTitle");
+    const desc = document.getElementById("modalDesc");
+    const uploader = document.getElementById("modalUploader");
     const player = document.getElementById("player");
+    const commentForm = document.getElementById("commentForm");
+    const commentHint = document.getElementById("commentLoginHint");
 
-    if (modalTitle) modalTitle.textContent = video.title;
-    if (modalDesc) modalDesc.textContent = video.description || "";
+    if (title) title.textContent = video.title;
+    if (desc) desc.textContent = video.description || "Sin descripción.";
+    if (uploader) uploader.textContent = "Subido por @" + (video.uploader || "Anónimo");
+    updateModalStats(video);
+    highlightVoteButtons(video.id);
 
     if (player) {
-        if (video.url) {
-            player.src = video.url;
-            player.load();
-        } else {
-            player.removeAttribute("src");
-        }
+        if (video.url) { player.src = video.url; player.load(); }
+        else { player.removeAttribute("src"); }
     }
+
+    if (currentUser) {
+        if (commentForm) commentForm.classList.remove("hidden");
+        if (commentHint) commentHint.classList.add("hidden");
+    } else {
+        if (commentForm) commentForm.classList.add("hidden");
+        if (commentHint) commentHint.classList.remove("hidden");
+    }
+
     openModal(modal);
+    incrementViews(video);
+    loadComments(video.id);
 }
 
 function setupPlayer() {
-    const closeModalBtn = document.getElementById("closeModal");
+    const closeBtn = document.getElementById("closeModal");
     const modal = document.getElementById("modal");
     const player = document.getElementById("player");
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener("click", function () {
-            closeModal(modal);
-            if (player) { player.pause(); player.removeAttribute("src"); }
-        });
-    }
+    if (closeBtn) closeBtn.addEventListener("click", () => {
+        closeModal(modal);
+        if (player) { player.pause(); player.removeAttribute("src"); }
+        currentPlayingVideo = null;
+    });
+    const likeBtn = document.getElementById("likeBtn");
+    const dislikeBtn = document.getElementById("dislikeBtn");
+    if (likeBtn) likeBtn.addEventListener("click", () => { if (currentPlayingVideo) applyVote(currentPlayingVideo, "like"); });
+    if (dislikeBtn) dislikeBtn.addEventListener("click", () => { if (currentPlayingVideo) applyVote(currentPlayingVideo, "dislike"); });
 }
 
-/* ============================================================
-   CATEGORÍAS Y BUSCADOR
-============================================================ */
-
+/* ---------- categories / search ---------- */
 function setupCategoriesAndSearch() {
-    document.querySelectorAll(".categories button").forEach(button => {
-        button.addEventListener("click", function () {
-            document.querySelectorAll(".categories button").forEach(btn => btn.classList.remove("active"));
+    document.querySelectorAll(".categories button").forEach(btn => {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll(".categories button").forEach(b => b.classList.remove("active"));
             this.classList.add("active");
             renderVideos(getCurrentFilteredList());
         });
     });
     const search = document.getElementById("search");
-    const searchButton = document.getElementById("searchButton");
+    const searchBtn = document.getElementById("searchButton");
     if (search) search.addEventListener("input", () => renderVideos(getCurrentFilteredList()));
-    if (searchButton) searchButton.addEventListener("click", () => renderVideos(getCurrentFilteredList()));
+    if (searchBtn) searchBtn.addEventListener("click", () => renderVideos(getCurrentFilteredList()));
 }
 
-/* ============================================================
-   SUBIDA DE VÍDEOS
-============================================================ */
-
+/* ---------- upload (solo registrados) ---------- */
 function setupUpload() {
     const uploadButton = document.getElementById("uploadButton");
     const uploadModal = document.getElementById("uploadModal");
     const closeUpload = document.getElementById("closeUpload");
     const uploadFile = document.getElementById("uploadFile");
     const uploadFileInfo = document.getElementById("uploadFileInfo");
-    const uploadSubmitButton = document.getElementById("uploadSubmitButton");
+    const submit = document.getElementById("uploadSubmitButton");
 
     if (uploadButton) {
         uploadButton.addEventListener("click", () => {
+            if (!currentUser) {
+                alert("Debes registrarte e iniciar sesión para subir vídeos.");
+                openAuth("register");
+                return;
+            }
             resetUploadForm();
             openModal(uploadModal);
         });
     }
     if (closeUpload) closeUpload.addEventListener("click", () => closeModal(uploadModal));
-
-    if (uploadFile) {
-        uploadFile.addEventListener("change", function () {
-            const file = this.files && this.files[0];
-            if (!file) {
-                if (uploadFileInfo) uploadFileInfo.textContent = "";
-                return;
-            }
-            let msg = `${file.name} — ${formatBytes(file.size)}`;
-            if (file.size > MAX_VIDEO_BYTES) {
-                msg += " ⚠️ Supera 50 MB";
-            } else if (!ALLOWED_VIDEO_TYPES.includes(file.type) && !/\.(mp4|webm|mov|avi)$/i.test(file.name)) {
-                msg += " ⚠️ Tipo no permitido";
-            }
-            if (uploadFileInfo) uploadFileInfo.textContent = msg;
-        });
-    }
-
-    if (uploadSubmitButton) {
-        uploadSubmitButton.addEventListener("click", handleUpload);
-    }
+    if (uploadFile) uploadFile.addEventListener("change", function () {
+        const f = this.files && this.files[0];
+        if (!f) { if (uploadFileInfo) uploadFileInfo.textContent = ""; return; }
+        let msg = f.name + " — " + formatBytes(f.size);
+        if (f.size > MAX_VIDEO_BYTES) msg += " ⚠️ > 50 MB";
+        if (uploadFileInfo) uploadFileInfo.textContent = msg;
+    });
+    if (submit) submit.addEventListener("click", handleUpload);
 }
 
 function resetUploadForm() {
-    const title = document.getElementById("uploadTitle");
-    const desc = document.getElementById("uploadDescription");
-    const file = document.getElementById("uploadFile");
+    ["uploadTitle","uploadDescription","uploadFile"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
     const agree = document.getElementById("uploadAgree");
-    const msg = document.getElementById("uploadMessage");
-    const info = document.getElementById("uploadFileInfo");
-    const progressWrap = document.getElementById("uploadProgressWrap");
-    if (title) title.value = "";
-    if (desc) desc.value = "";
-    if (file) file.value = "";
     if (agree) agree.checked = false;
+    const msg = document.getElementById("uploadMessage");
     if (msg) msg.textContent = "";
+    const info = document.getElementById("uploadFileInfo");
     if (info) info.textContent = "";
-    if (progressWrap) progressWrap.classList.add("hidden");
+    const pw = document.getElementById("uploadProgressWrap");
+    if (pw) pw.classList.add("hidden");
 }
 
 async function handleUpload() {
-    const titleEl = document.getElementById("uploadTitle");
-    const descEl = document.getElementById("uploadDescription");
-    const catEl = document.getElementById("uploadCategory");
+    if (!currentUser) {
+        alert("Solo usuarios registrados pueden subir.");
+        openAuth("login");
+        return;
+    }
+    const title = (document.getElementById("uploadTitle") || {}).value.trim();
+    const description = (document.getElementById("uploadDescription") || {}).value.trim();
+    const category = (document.getElementById("uploadCategory") || {}).value || "Otros";
     const fileEl = document.getElementById("uploadFile");
-    const agreeEl = document.getElementById("uploadAgree");
+    const file = fileEl && fileEl.files ? fileEl.files[0] : null;
+    const agreed = document.getElementById("uploadAgree") && document.getElementById("uploadAgree").checked;
     const msgEl = document.getElementById("uploadMessage");
     const submitBtn = document.getElementById("uploadSubmitButton");
     const progressWrap = document.getElementById("uploadProgressWrap");
     const progressBar = document.getElementById("uploadProgressBar");
     const progressText = document.getElementById("uploadProgressText");
 
-    const title = titleEl ? titleEl.value.trim() : "";
-    const description = descEl ? descEl.value.trim() : "";
-    const category = catEl ? catEl.value : "Otros";
-    const file = fileEl && fileEl.files ? fileEl.files[0] : null;
-    const agreed = agreeEl ? agreeEl.checked : false;
-
-    function setMsg(text, isError) {
-        if (msgEl) {
-            msgEl.textContent = text;
-            msgEl.style.color = isError ? "#ff6b8a" : "";
-        }
+    function setMsg(t, err) {
+        if (msgEl) { msgEl.textContent = t; msgEl.style.color = err ? "#ff6b8a" : ""; }
     }
 
-    if (!title || title.length < 3) {
-        setMsg("El título debe tener al menos 3 caracteres.", true);
-        return;
-    }
-    if (!file) {
-        setMsg("Selecciona un archivo de vídeo.", true);
-        return;
-    }
-    if (file.size > MAX_VIDEO_BYTES) {
-        setMsg("El vídeo no puede superar 50 MB.", true);
-        return;
-    }
+    if (!title || title.length < 3) { setMsg("Título mínimo 3 caracteres.", true); return; }
+    if (!file) { setMsg("Selecciona un vídeo.", true); return; }
+    if (file.size > MAX_VIDEO_BYTES) { setMsg("Máximo 50 MB.", true); return; }
     if (!ALLOWED_VIDEO_TYPES.includes(file.type) && !/\.(mp4|webm|mov|avi)$/i.test(file.name)) {
-        setMsg("Solo se permiten MP4, WebM, MOV o AVI.", true);
-        return;
+        setMsg("Solo MP4, WebM, MOV o AVI.", true); return;
     }
-    if (!agreed) {
-        setMsg("Debes confirmar que el contenido no es +18, gore ni ilegal.", true);
-        return;
-    }
+    if (!agreed) { setMsg("Debes aceptar las normas de contenido.", true); return; }
     if (containsBlockedWords(title) || containsBlockedWords(description)) {
-        setMsg("El título o la descripción contienen términos no permitidos.", true);
-        return;
+        setMsg("Título o descripción no permitidos.", true); return;
     }
-    if (!supabase) {
-        setMsg("Supabase no está disponible. Revisa la conexión o las claves.", true);
-        return;
-    }
+    if (!supabaseClient) { setMsg("Supabase no disponible.", true); return; }
 
-    const uploader = currentUser ? currentUser.username : "Anónimo";
-
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Subiendo...";
-    }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Subiendo..."; }
     if (progressWrap) progressWrap.classList.remove("hidden");
-    if (progressBar) progressBar.style.width = "15%";
+    if (progressBar) progressBar.style.width = "20%";
     if (progressText) progressText.textContent = "Subiendo...";
 
     try {
-        await uploadVideoToSupabase(file, { title, description, category, uploader });
+        await uploadVideoToSupabase(file, {
+            title, description, category,
+            uploader: currentUser.username
+        });
         if (progressBar) progressBar.style.width = "100%";
         if (progressText) progressText.textContent = "100%";
-        setMsg("¡Vídeo subido correctamente!", false);
-
+        setMsg("¡Vídeo subido!", false);
         setTimeout(async () => {
             closeModal(document.getElementById("uploadModal"));
             await refreshVideos();
-        }, 800);
+        }, 700);
     } catch (err) {
         console.error(err);
-        const m = (err && err.message) ? err.message : String(err);
-        setMsg("Error al subir: " + m, true);
+        setMsg("Error: " + (err.message || err), true);
         if (progressWrap) progressWrap.classList.add("hidden");
     } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Subir vídeo";
-        }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Subir vídeo"; }
     }
 }
 
-/* ============================================================
-   AUTH
-============================================================ */
+/* ---------- CAPTCHA + auth ---------- */
+function refreshCaptcha() {
+    captchaA = Math.floor(Math.random() * 9) + 1;
+    captchaB = Math.floor(Math.random() * 9) + 1;
+    const q = document.getElementById("captchaQuestion");
+    if (q) q.textContent = captchaA + " + " + captchaB;
+    const a = document.getElementById("captchaAnswer");
+    if (a) a.value = "";
+}
 
 function openAuth(tab) {
-    const authModal = document.getElementById("authModal");
-    const authMessage = document.getElementById("authMessage");
-    if (authMessage) authMessage.textContent = "";
+    const modal = document.getElementById("authModal");
+    const msg = document.getElementById("authMessage");
+    if (msg) msg.textContent = "";
+    refreshCaptcha();
     switchAuthTab(tab || "register");
-    openModal(authModal);
+    openModal(modal);
 }
+
 function switchAuthTab(tab) {
-    const registerPanel = document.getElementById("registerPanel");
-    const loginPanel = document.getElementById("loginPanel");
-    document.querySelectorAll(".auth-tab").forEach(t => {
-        t.classList.toggle("active", t.dataset.tab === tab);
-    });
+    document.querySelectorAll(".auth-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+    const reg = document.getElementById("registerPanel");
+    const log = document.getElementById("loginPanel");
     if (tab === "login") {
-        if (registerPanel) registerPanel.classList.add("hidden");
-        if (loginPanel) loginPanel.classList.remove("hidden");
+        if (reg) reg.classList.add("hidden");
+        if (log) log.classList.remove("hidden");
     } else {
-        if (loginPanel) loginPanel.classList.add("hidden");
-        if (registerPanel) registerPanel.classList.remove("hidden");
+        if (log) log.classList.add("hidden");
+        if (reg) reg.classList.remove("hidden");
+        refreshCaptcha();
     }
 }
+
 function setupAuth() {
     const profileButton = document.getElementById("profileButton");
-    const authModal = document.getElementById("authModal");
     const closeAuth = document.getElementById("closeAuth");
+    const authModal = document.getElementById("authModal");
     const registerButton = document.getElementById("registerButton");
     const loginButton = document.getElementById("loginButton");
 
-    document.querySelectorAll(".auth-tab").forEach(tab => {
-        tab.addEventListener("click", function () {
+    document.querySelectorAll(".auth-tab").forEach(t => {
+        t.addEventListener("click", function () {
             switchAuthTab(this.dataset.tab);
-            const authMessage = document.getElementById("authMessage");
-            if (authMessage) authMessage.textContent = "";
+            const m = document.getElementById("authMessage");
+            if (m) m.textContent = "";
         });
     });
-    if (profileButton) {
-        profileButton.addEventListener("click", function () {
-            if (currentUser) openProfile();
-            else openAuth("register");
-        });
-    }
+    if (profileButton) profileButton.addEventListener("click", () => {
+        if (currentUser) openProfile(); else openAuth("register");
+    });
     if (closeAuth) closeAuth.addEventListener("click", () => closeModal(authModal));
     if (registerButton) registerButton.addEventListener("click", register);
     if (loginButton) loginButton.addEventListener("click", login);
 }
-function register() {
-    const usernameEl = document.getElementById("registerUsername");
-    const passwordEl = document.getElementById("registerPassword");
-    const authMessage = document.getElementById("authMessage");
-    const username = usernameEl ? usernameEl.value.trim() : "";
-    const password = passwordEl ? passwordEl.value : "";
 
-    if (username.length < 3) {
-        if (authMessage) authMessage.textContent = "El nombre debe tener al menos 3 caracteres.";
-        return;
-    }
-    if (password.length < 4) {
-        if (authMessage) authMessage.textContent = "La contraseña debe tener al menos 4 caracteres.";
+function register() {
+    const username = (document.getElementById("registerUsername") || {}).value.trim();
+    const password = (document.getElementById("registerPassword") || {}).value;
+    const answer = parseInt((document.getElementById("captchaAnswer") || {}).value, 10);
+    const msg = document.getElementById("authMessage");
+
+    if (username.length < 3) { if (msg) msg.textContent = "Nombre mínimo 3 caracteres."; return; }
+    if (password.length < 4) { if (msg) msg.textContent = "Contraseña mínimo 4 caracteres."; return; }
+    if (answer !== captchaA + captchaB) {
+        if (msg) msg.textContent = "CAPTCHA incorrecto. Inténtalo de nuevo.";
+        refreshCaptcha();
         return;
     }
     if (getUser()) {
-        if (authMessage) authMessage.textContent = "Ya hay una cuenta. Usa «Iniciar sesión».";
+        if (msg) msg.textContent = "Ya hay cuenta. Usa Iniciar sesión.";
         return;
     }
 
     const user = {
         username, password,
-        bio: "¡Bienvenido a mi perfil de VerPlay!",
-        interests: "Todavía no has añadido tus intereses.",
+        bio: "¡Bienvenido a VerPlay!",
+        interests: "Todavía no has añadido intereses.",
         avatar: "", cover: "",
         favorites: [], achievements: [],
         createdAt: Date.now(), connectedSince: Date.now(), totalOnlineTime: 0
     };
     saveUser(user);
     currentUser = user;
-    if (authMessage) authMessage.textContent = "¡Cuenta creada correctamente!";
+    if (msg) msg.textContent = "¡Cuenta creada!";
     setTimeout(() => {
         closeModal(document.getElementById("authModal"));
         updateUserButton();
         openProfile();
     }, 500);
 }
-function login() {
-    const usernameEl = document.getElementById("loginUsername");
-    const passwordEl = document.getElementById("loginPassword");
-    const authMessage = document.getElementById("authMessage");
-    const username = usernameEl ? usernameEl.value.trim() : "";
-    const password = passwordEl ? passwordEl.value : "";
-    const user = getUser();
 
-    if (!user) {
-        if (authMessage) authMessage.textContent = "No hay cuenta. Regístrate primero.";
-        return;
-    }
+function login() {
+    const username = (document.getElementById("loginUsername") || {}).value.trim();
+    const password = (document.getElementById("loginPassword") || {}).value;
+    const msg = document.getElementById("authMessage");
+    const user = getUser();
+    if (!user) { if (msg) msg.textContent = "No hay cuenta. Regístrate."; return; }
     if (user.username !== username || user.password !== password) {
-        if (authMessage) authMessage.textContent = "Usuario o contraseña incorrectos.";
+        if (msg) msg.textContent = "Usuario o contraseña incorrectos.";
         return;
     }
     user.connectedSince = Date.now();
     currentUser = user;
     saveUser(user);
-    if (authMessage) authMessage.textContent = "¡Bienvenido de nuevo!";
+    if (msg) msg.textContent = "¡Bienvenido!";
     setTimeout(() => {
         closeModal(document.getElementById("authModal"));
         updateUserButton();
@@ -696,12 +709,9 @@ function login() {
     }, 400);
 }
 
-/* ============================================================
-   PERFIL
-============================================================ */
-
-function getDefaultAvatar(username) {
-    return "https://ui-avatars.com/api/?name=" + encodeURIComponent(username) + "&background=7c5cff&color=fff&size=256";
+/* ---------- profile ---------- */
+function getDefaultAvatar(u) {
+    return "https://ui-avatars.com/api/?name=" + encodeURIComponent(u) + "&background=7c5cff&color=fff&size=256";
 }
 function openProfile() {
     if (!currentUser) { openAuth("login"); return; }
@@ -712,28 +722,17 @@ function openProfile() {
 function renderProfile() {
     const user = getUser();
     if (!user) return;
-    const profileName = document.getElementById("profileName");
-    const profileBio = document.getElementById("profileBio");
-    const profileInterests = document.getElementById("profileInterests");
-    const profileAvatar = document.getElementById("profileAvatar");
-    const profileCover = document.getElementById("profileCover");
-    const profileHours = document.getElementById("profileHours");
-    const profileAchievements = document.getElementById("profileAchievements");
-    const profileFavorites = document.getElementById("profileFavorites");
-
-    if (profileName) profileName.textContent = user.username;
-    if (profileBio) profileBio.textContent = user.bio || "Sin descripción.";
-    if (profileInterests) profileInterests.textContent = user.interests || "No especificados.";
-    if (profileAvatar) profileAvatar.src = user.avatar || getDefaultAvatar(user.username);
-    if (profileCover) {
-        profileCover.style.backgroundImage = user.cover
-            ? `url("${user.cover}")`
-            : "linear-gradient(135deg,#302060,#11141b)";
-    }
-    const hours = Math.floor((user.totalOnlineTime || 0) / 3600000);
-    if (profileHours) profileHours.textContent = hours;
-    if (profileAchievements) profileAchievements.textContent = (user.achievements && user.achievements.length) || 0;
-    if (profileFavorites) profileFavorites.textContent = (user.favorites && user.favorites.length) || 0;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("profileName", user.username);
+    set("profileBio", user.bio || "Sin descripción.");
+    set("profileInterests", user.interests || "No especificados.");
+    const av = document.getElementById("profileAvatar");
+    if (av) av.src = user.avatar || getDefaultAvatar(user.username);
+    const cover = document.getElementById("profileCover");
+    if (cover) cover.style.backgroundImage = user.cover ? `url("${user.cover}")` : "linear-gradient(135deg,#302060,#11141b)";
+    set("profileHours", Math.floor((user.totalOnlineTime || 0) / 3600000));
+    set("profileAchievements", (user.achievements && user.achievements.length) || 0);
+    set("profileFavorites", (user.favorites && user.favorites.length) || 0);
     renderAchievements(user);
     renderFavorites(user);
 }
@@ -755,106 +754,85 @@ function checkAchievements(user) {
     if (user.favorites && user.favorites.length >= 1 && !user.achievements.includes("first_favorite")) user.achievements.push("first_favorite");
 }
 function renderAchievements(user) {
-    const container = document.getElementById("achievements");
-    if (!container) return;
+    const c = document.getElementById("achievements");
+    if (!c) return;
     const list = [
         { id: "one_hour", icon: "⏱️", name: "1 hora conectado" },
         { id: "first_favorite", icon: "❤️", name: "Primer favorito" },
         { id: "first_video", icon: "🎬", name: "Primer vídeo" },
         { id: "creator", icon: "⭐", name: "Creador VerPlay" }
     ];
-    container.innerHTML = "";
-    list.forEach(a => {
+    c.innerHTML = list.map(a => {
         const unlocked = user.achievements && user.achievements.includes(a.id);
-        const div = document.createElement("div");
-        div.className = "achievement" + (unlocked ? "" : " locked");
-        div.innerHTML = `<div class="achievement-icon">${a.icon}</div><div class="achievement-name">${a.name}</div>`;
-        container.appendChild(div);
-    });
+        return `<div class="achievement${unlocked ? "" : " locked"}"><div class="achievement-icon">${a.icon}</div><div class="achievement-name">${a.name}</div></div>`;
+    }).join("");
 }
 function renderFavorites(user) {
-    const container = document.getElementById("favoriteVideos");
-    if (!container) return;
-    container.innerHTML = "";
-    if (!user.favorites || user.favorites.length === 0) {
-        container.innerHTML = "<p>Todavía no tienes vídeos favoritos.</p>";
+    const c = document.getElementById("favoriteVideos");
+    if (!c) return;
+    if (!user.favorites || !user.favorites.length) {
+        c.innerHTML = "<p>Todavía no tienes favoritos.</p>";
         return;
     }
-    user.favorites.forEach(id => {
-        const video = allVideos.find(v => v.id === id);
-        if (!video) return;
-        const div = document.createElement("div");
-        div.className = "favorite-item";
-        div.textContent = `${video.icon || "🎬"} ${video.title}`;
-        container.appendChild(div);
-    });
+    c.innerHTML = user.favorites.map(id => {
+        const v = allVideos.find(x => x.id === id);
+        return v ? `<div class="favorite-item">${v.icon || "🎬"} ${escapeHtml(v.title)}</div>` : "";
+    }).join("");
 }
 function setupProfile() {
     const closeProfile = document.getElementById("closeProfile");
     const logoutButton = document.getElementById("logoutButton");
-    const editProfileButton = document.getElementById("editProfileButton");
-    const editProfileModal = document.getElementById("editProfileModal");
-    const closeEditProfile = document.getElementById("closeEditProfile");
-    const saveProfileButton = document.getElementById("saveProfileButton");
+    const editBtn = document.getElementById("editProfileButton");
+    const editModal = document.getElementById("editProfileModal");
+    const closeEdit = document.getElementById("closeEditProfile");
+    const saveBtn = document.getElementById("saveProfileButton");
 
     if (closeProfile) closeProfile.addEventListener("click", () => closeModal(document.getElementById("profileModal")));
-    if (logoutButton) {
-        logoutButton.addEventListener("click", function () {
-            updateOnlineTime();
-            safeRemove("verplay_current_user");
-            currentUser = null;
-            closeModal(document.getElementById("profileModal"));
-            updateUserButton();
-            renderVideos(getCurrentFilteredList());
-        });
-    }
-    if (editProfileButton) {
-        editProfileButton.addEventListener("click", function () {
-            const user = getUser();
-            if (!user) return;
-            const interestsInput = document.getElementById("interestsInput");
-            const bioInput = document.getElementById("bioInput");
-            if (interestsInput) interestsInput.value = user.interests || "";
-            if (bioInput) bioInput.value = user.bio || "";
-            openModal(editProfileModal);
-        });
-    }
-    if (closeEditProfile) closeEditProfile.addEventListener("click", () => closeModal(editProfileModal));
-    if (saveProfileButton) {
-        saveProfileButton.addEventListener("click", async function () {
-            const user = getUser();
-            if (!user) return;
-            const interestsInput = document.getElementById("interestsInput");
-            const bioInput = document.getElementById("bioInput");
-            const avatarInput = document.getElementById("avatarInput");
-            const profileBackgroundInput = document.getElementById("profileBackgroundInput");
-            user.interests = interestsInput ? interestsInput.value.trim() : user.interests;
-            user.bio = bioInput ? bioInput.value.trim() : user.bio;
-            try {
-                if (avatarInput && avatarInput.files && avatarInput.files[0]) {
-                    if (avatarInput.files[0].size <= MAX_IMAGE_BYTES) {
-                        user.avatar = await readFile(avatarInput.files[0]);
-                    } else alert("Avatar demasiado grande (máx. ~1,5 MB).");
-                }
-                if (profileBackgroundInput && profileBackgroundInput.files && profileBackgroundInput.files[0]) {
-                    if (profileBackgroundInput.files[0].size <= MAX_IMAGE_BYTES) {
-                        user.cover = await readFile(profileBackgroundInput.files[0]);
-                    } else alert("Fondo del perfil demasiado grande (máx. ~1,5 MB).");
-                }
-            } catch (e) { console.warn(e); }
-            saveUser(user);
-            currentUser = user;
-            closeModal(editProfileModal);
-            renderProfile();
-        });
-    }
+    if (logoutButton) logoutButton.addEventListener("click", () => {
+        updateOnlineTime();
+        safeRemove("verplay_current_user");
+        currentUser = null;
+        closeModal(document.getElementById("profileModal"));
+        updateUserButton();
+        renderVideos(getCurrentFilteredList());
+    });
+    if (editBtn) editBtn.addEventListener("click", () => {
+        const user = getUser();
+        if (!user) return;
+        const ii = document.getElementById("interestsInput");
+        const bi = document.getElementById("bioInput");
+        if (ii) ii.value = user.interests || "";
+        if (bi) bi.value = user.bio || "";
+        openModal(editModal);
+    });
+    if (closeEdit) closeEdit.addEventListener("click", () => closeModal(editModal));
+    if (saveBtn) saveBtn.addEventListener("click", async () => {
+        const user = getUser();
+        if (!user) return;
+        const ii = document.getElementById("interestsInput");
+        const bi = document.getElementById("bioInput");
+        const av = document.getElementById("avatarInput");
+        const bg = document.getElementById("profileBackgroundInput");
+        user.interests = ii ? ii.value.trim() : user.interests;
+        user.bio = bi ? bi.value.trim() : user.bio;
+        try {
+            if (av && av.files && av.files[0] && av.files[0].size <= MAX_IMAGE_BYTES)
+                user.avatar = await readFile(av.files[0]);
+            if (bg && bg.files && bg.files[0] && bg.files[0].size <= MAX_IMAGE_BYTES)
+                user.cover = await readFile(bg.files[0]);
+        } catch (e) { console.warn(e); }
+        saveUser(user);
+        currentUser = user;
+        closeModal(editModal);
+        renderProfile();
+    });
 }
 function readFile(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
     });
 }
 function updateUserButton() {
@@ -862,11 +840,25 @@ function updateUserButton() {
     if (el) el.textContent = currentUser ? currentUser.username : "Registrarse";
 }
 
-/* ============================================================
-   INIT
-============================================================ */
+/* ---------- modals outside click ---------- */
+function setupModalOutsideClick() {
+    document.querySelectorAll(".modal").forEach(m => {
+        m.addEventListener("click", e => {
+            if (e.target === m) {
+                m.classList.add("hidden");
+                if (m.id === "modal") {
+                    const p = document.getElementById("player");
+                    if (p) { p.pause(); p.removeAttribute("src"); }
+                    currentPlayingVideo = null;
+                }
+            }
+        });
+    });
+}
 
+/* ---------- init ---------- */
 function init() {
+    console.log("[VerPlay] init");
     currentUser = getCurrentUserFromStorage();
     loadBackground();
     setupBackgroundControls();
@@ -876,12 +868,14 @@ function init() {
     setupAuth();
     setupProfile();
     setupUpload();
+    setupCommentsUI();
     setupModalOutsideClick();
     updateUserButton();
     renderVideos(allVideos);
     refreshVideos();
+    refreshCaptcha();
 
-    setInterval(function () {
+    setInterval(() => {
         if (!currentUser) return;
         const user = getUser();
         if (!user) return;
